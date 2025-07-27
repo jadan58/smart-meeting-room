@@ -25,23 +25,50 @@ namespace SmartMeetingRoomAPI.Data
         {
             base.OnModelCreating(builder);
 
-            // Explicitly configure self-referencing relationship for NextMeeting
+            // ✅ Self-referencing relationship for NextMeeting
             builder.Entity<Meeting>()
                 .HasOne(m => m.NextMeeting)
                 .WithOne()
                 .HasForeignKey<Meeting>(m => m.NextMeetingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Configure many-to-many join RoomFeature 
+            // ✅ Many-to-many join RoomFeature
             builder.Entity<RoomFeature>()
                 .HasOne(rf => rf.Room)
                 .WithMany(r => r.RoomFeatures)
-                .HasForeignKey(rf => rf.RoomId);
+                .HasForeignKey(rf => rf.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<RoomFeature>()
                 .HasOne(rf => rf.Feature)
                 .WithMany(f => f.RoomFeatures)
-                .HasForeignKey(rf => rf.FeatureId);
+                .HasForeignKey(rf => rf.FeatureId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // ✅ Prevent multiple cascade paths: use Restrict for Meeting relations
+            builder.Entity<Invitee>()
+                .HasOne(i => i.Meeting)
+                .WithMany(m => m.Invitees)
+                .HasForeignKey(i => i.MeetingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ActionItem>()
+                .HasOne(ai => ai.Meeting)
+                .WithMany(m => m.ActionItems)
+                .HasForeignKey(ai => ai.MeetingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Note>()
+                .HasOne(n => n.Meeting)
+                .WithMany(m => m.Notes)
+                .HasForeignKey(n => n.MeetingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Attachment>()
+                .HasOne(a => a.Meeting)
+                .WithMany(m => m.Attachments)
+                .HasForeignKey(a => a.MeetingId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
