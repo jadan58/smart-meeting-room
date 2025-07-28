@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SmartMeetingRoomAPI.Data;
+using SmartMeetingRoomAPI.Mapppers;
 using SmartMeetingRoomAPI.Models;
+using SmartMeetingRoomAPI.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +16,8 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
+builder.Services.AddScoped<IRoomRepository, SqlRoomRepository>();
+builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
 // Add controllers
 builder.Services.AddControllers();
 
