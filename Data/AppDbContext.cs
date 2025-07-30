@@ -26,11 +26,14 @@ namespace SmartMeetingRoomAPI.Data
             base.OnModelCreating(builder);
 
             // ✅ Self-referencing relationship for NextMeeting
-            builder.Entity<Meeting>()
-                .HasOne(m => m.NextMeeting)
-                .WithOne()
-                .HasForeignKey<Meeting>(m => m.NextMeetingId)
+            // ✅ Explicit Room → Meeting relationship
+             builder.Entity<Meeting>()
+                .HasOne(m => m.Room)
+                .WithMany(r => r.Meetings)
+                .HasForeignKey(m => m.RoomId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+
 
             // ✅ Many-to-many join RoomFeature
             builder.Entity<RoomFeature>()

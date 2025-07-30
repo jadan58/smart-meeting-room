@@ -8,7 +8,6 @@ namespace SmartMeetingRoomAPI.DTOs
         public string Name { get; set; }
         public int Capacity { get; set; }
         public string Location { get; set; }
-
         public List<Guid> FeatureIds { get; set; }
     }
 }

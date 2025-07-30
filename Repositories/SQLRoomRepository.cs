@@ -39,21 +39,21 @@ namespace SmartMeetingRoomAPI.Repositories
             return room;
         }
 
-        public async Task<Room?> UpdateAsync(Guid id, Room updatedRoom)
+        public async Task<Room> UpdateAsync(Guid id, Room room)
         {
-            var existingRoom = await dbContext.Rooms.FindAsync(id);
+            dbContext.Attach(room);
+            dbContext.Entry(room).State = EntityState.Modified;
 
-            if (existingRoom == null)
-                return null;
-
-            existingRoom.Name = updatedRoom.Name;
-            existingRoom.Capacity = updatedRoom.Capacity;
-            existingRoom.Location = updatedRoom.Location;
-            
+            // Also mark child entities (RoomFeatures) as added
+            foreach (var rf in room.RoomFeatures)
+            {
+                dbContext.Entry(rf).State = EntityState.Added;
+            }
 
             await dbContext.SaveChangesAsync();
-            return existingRoom;
+            return room;
         }
+
 
         public async Task<Room?> DeleteAsync(Guid id)
         {
