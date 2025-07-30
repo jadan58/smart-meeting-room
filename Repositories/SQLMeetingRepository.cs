@@ -1,0 +1,211 @@
+﻿using Microsoft.EntityFrameworkCore;
+using SmartMeetingRoomAPI.Data;
+using SmartMeetingRoomAPI.Models;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace SmartMeetingRoomAPI.Repositories
+{
+    public class SqlMeetingRepository : IMeetingRepository
+    {
+        private readonly AppDbContext dbContext;
+
+        public SqlMeetingRepository(AppDbContext dbContext)
+        {
+            this.dbContext = dbContext;
+        }
+        //---------- Meetings ---------
+        public async Task<IEnumerable<Meeting>> GetAllAsync()
+        {
+            return await dbContext.Meetings
+                .Include(m => m.Notes)
+                .Include(m => m.ActionItems)
+                .Include(m => m.Invitees)
+                .Include(m => m.Attachments)
+                .Include(m => m.RecurringBooking)
+                .Include(m => m.NextMeeting)
+                .ToListAsync();
+        }
+
+
+        public async Task<Meeting?> GetByIdAsync(Guid id)
+        {
+            return await dbContext.Meetings
+                .Include(m => m.Notes)
+                .Include(m => m.ActionItems)
+                .Include(m => m.Invitees)
+                .Include(m => m.Attachments)
+                .Include(m => m.RecurringBooking)
+                .Include(m => m.NextMeeting)
+                .FirstOrDefaultAsync(m => m.Id == id);
+        }
+
+        public async Task<Meeting> AddAsync(Meeting meeting)
+        {
+            await dbContext.Meetings.AddAsync(meeting);
+            await dbContext.SaveChangesAsync();
+            return meeting;
+        }
+
+        public async Task<Meeting?> UpdateAsync(Guid id, Meeting updatedMeeting)
+        {
+            var existing = await dbContext.Meetings.FindAsync(id);
+            if (existing == null) return null;
+
+            // update scalar properties
+            existing.Title = updatedMeeting.Title;
+            existing.Agenda = updatedMeeting.Agenda;
+            existing.StartTime = updatedMeeting.StartTime;
+            existing.EndTime = updatedMeeting.EndTime;
+            existing.Status = updatedMeeting.Status;
+            existing.UpdatedAt = DateTime.UtcNow;
+            existing.RoomId = updatedMeeting.RoomId;
+            existing.UserId = updatedMeeting.UserId;
+            existing.RecurringBookingId = updatedMeeting.RecurringBookingId;
+            existing.NextMeetingId = updatedMeeting.NextMeetingId;
+
+            await dbContext.SaveChangesAsync();
+            return existing;
+        }
+
+        public async Task<Meeting?> DeleteAsync(Guid id)
+        {
+            var meeting = await dbContext.Meetings.FindAsync(id);
+            if (meeting == null) return null;
+
+            dbContext.Meetings.Remove(meeting);
+            await dbContext.SaveChangesAsync();
+            return meeting;
+        }
+
+        // ---------- Notes ----------
+
+        public async Task<Note?> AddNoteAsync(Guid meetingId, Note note)
+        {
+            // ensure parent meeting exists
+            var meeting = await dbContext.Meetings.FindAsync(meetingId);
+            if (meeting == null) return null;
+
+            note.MeetingId = meetingId;
+            note.CreatedAt = DateTime.UtcNow;
+            await dbContext.Notes.AddAsync(note);
+            await dbContext.SaveChangesAsync();
+            return note;
+        }
+
+        public async Task<Note?> UpdateNoteAsync(Guid meetingId, Guid noteId, Note updatedNote)
+        {
+            var note = await dbContext.Notes
+                .FirstOrDefaultAsync(n => n.Id == noteId && n.MeetingId == meetingId);
+            if (note == null) return null;
+
+            note.Content = updatedNote.Content;
+            await dbContext.SaveChangesAsync();
+            return note;
+        }
+
+        public async Task<Note?> DeleteNoteAsync(Guid meetingId, Guid noteId)
+        {
+            var note = await dbContext.Notes
+                .FirstOrDefaultAsync(n => n.Id == noteId && n.MeetingId == meetingId);
+            if (note == null) return null;
+
+            dbContext.Notes.Remove(note);
+            await dbContext.SaveChangesAsync();
+            return note;
+        }
+
+        // ---------- Action Items ----------
+
+        public async Task<ActionItem?> AddActionItemAsync(Guid meetingId, ActionItem actionItem)
+        {
+            var meeting = await dbContext.Meetings.FindAsync(meetingId);
+            if (meeting == null) return null;
+
+            actionItem.MeetingId = meetingId;
+            await dbContext.ActionItems.AddAsync(actionItem);
+            await dbContext.SaveChangesAsync();
+            return actionItem;
+        }
+
+        public async Task<ActionItem?> UpdateActionItemAsync(Guid meetingId, Guid actionItemId, ActionItem updatedItem)
+        {
+            var item = await dbContext.ActionItems
+                .FirstOrDefaultAsync(ai => ai.Id == actionItemId && ai.MeetingId == meetingId);
+            if (item == null) return null;
+
+            item.Description = updatedItem.Description;
+            item.Deadline = updatedItem.Deadline;
+            item.Status = updatedItem.Status;
+            item.Type = updatedItem.Type;
+            await dbContext.SaveChangesAsync();
+            return item;
+        }
+
+        public async Task<ActionItem?> DeleteActionItemAsync(Guid meetingId, Guid actionItemId)
+        {
+            var item = await dbContext.ActionItems
+                .FirstOrDefaultAsync(ai => ai.Id == actionItemId && ai.MeetingId == meetingId);
+            if (item == null) return null;
+
+            dbContext.ActionItems.Remove(item);
+            await dbContext.SaveChangesAsync();
+            return item;
+        }
+
+        // ---------- Invitees ----------
+
+        public async Task<Invitee?> AddInviteeAsync(Guid meetingId, Invitee invitee)
+        {
+            var meeting = await dbContext.Meetings.FindAsync(meetingId);
+            if (meeting == null) return null;
+
+            invitee.MeetingId = meetingId;
+            await dbContext.Invitees.AddAsync(invitee);
+            await dbContext.SaveChangesAsync();
+            return invitee;
+        }
+
+        public async Task<Invitee?> DeleteInviteeAsync(Guid meetingId, Guid inviteeId)
+        {
+            var invitee = await dbContext.Invitees
+                .FirstOrDefaultAsync(i => i.Id == inviteeId && i.MeetingId == meetingId);
+            if (invitee == null) return null;
+
+            dbContext.Invitees.Remove(invitee);
+            await dbContext.SaveChangesAsync();
+            return invitee;
+        }
+
+        // ---------- Attachments ----------
+
+        public async Task<Attachment?> AddAttachmentAsync(Guid meetingId, Attachment attachment)
+        {
+            var meeting = await dbContext.Meetings.FindAsync(meetingId);
+            if (meeting == null) return null;
+
+            attachment.MeetingId = meetingId;
+            attachment.UploadedAt = DateTime.UtcNow;
+            await dbContext.Attachments.AddAsync(attachment);
+            await dbContext.SaveChangesAsync();
+            return attachment;
+        }
+
+        public async Task<Attachment?> DeleteAttachmentAsync(Guid meetingId, Guid attachmentId)
+        {
+            var attachment = await dbContext.Attachments
+                .FirstOrDefaultAsync(a => a.Id == attachmentId && a.MeetingId == meetingId);
+            if (attachment == null) return null;
+
+            dbContext.Attachments.Remove(attachment);
+            await dbContext.SaveChangesAsync();
+            return attachment;
+        }
+
+
+
+
+
+    }
+}
