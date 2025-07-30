@@ -59,6 +59,9 @@ namespace SmartMeetingRoomAPI.Mappers
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.MeetingId, opt => opt.Ignore())
                 .ForMember(dest => dest.UploadedAt, opt => opt.Ignore());
+
+            //User mappings
+            CreateMap<ApplicationUser, ApplicationUserDto>().ReverseMap();
         }
     }
 }
