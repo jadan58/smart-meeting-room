@@ -1,40 +1,44 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
 using SmartMeetingRoomAPI.Models;
-using System;
-using System.Threading.Tasks;
-
 namespace SmartMeetingRoomAPI.Seeders
 {
-    public class Seeder
+    public static class Seeder
     {
-        public static async Task SeedTestUserAsync(IServiceProvider services)
+        public static async Task SeedTestUserAsync(IServiceProvider serviceProvider)
         {
-            var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+            var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
 
-            string testEmail = "testuser@example.com";
-
-            var existingUser = await userManager.FindByEmailAsync(testEmail);
-            if (existingUser == null)
+            // Create roles if they don't exist
+            var roles = new[] { "Admin", "Employee", "Guest" };
+            foreach (var role in roles)
             {
-                var user = new ApplicationUser
+                if (!await roleManager.RoleExistsAsync(role))
                 {
-                    UserName = testEmail,
-                    Email = testEmail,
+                    await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+                }
+            }
+
+            // Create a test admin user
+            var testUser = await userManager.FindByEmailAsync("admin@example.com");
+            if (testUser == null)
+            {
+                testUser = new ApplicationUser
+                {
+                    UserName = "admin@example.com",
+                    Email = "admin@example.com",
                     FirstName = "Test",
-                    LastName = "User"
+                    LastName = "Admin",
+                    EmailConfirmed = true
                 };
 
-                var result = await userManager.CreateAsync(user, "Test@1234"); // Use a strong password!
-
-                if (!result.Succeeded)
+                var result = await userManager.CreateAsync(testUser, "Admin123!");
+                if (result.Succeeded)
                 {
-                    throw new Exception($"Failed to create user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                    await userManager.AddToRoleAsync(testUser, "Admin");
                 }
-
-                Console.WriteLine($"Seeded user with Id: {user.Id}");
             }
         }
-
     }
+
 }

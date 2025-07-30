@@ -21,7 +21,6 @@ namespace SmartMeetingRoomAPI.Repositories
             return await dbContext.Meetings
                 .Include(m => m.Notes)
                 .Include(m => m.ActionItems)
-                    .ThenInclude(a => a.AssignedToUser)
                 .Include(m => m.Invitees)
                 .Include(m => m.Attachments)
                 .Include(m => m.RecurringBooking)
@@ -35,7 +34,6 @@ namespace SmartMeetingRoomAPI.Repositories
             return await dbContext.Meetings
                 .Include(m => m.Notes)
                 .Include(m => m.ActionItems)
-                    .ThenInclude(a => a.AssignedToUser)
                 .Include(m => m.Invitees)
                 .Include(m => m.Attachments)
                 .Include(m => m.RecurringBooking)
