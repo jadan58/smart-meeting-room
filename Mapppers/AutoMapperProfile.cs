@@ -8,12 +8,22 @@ namespace SmartMeetingRoomAPI.Mappers
     {
         public AutoMapperProfile()
         {
-            // Room mappings
-            CreateMap<Room, RoomResponseDto>().ReverseMap();
-            CreateMap<CreateRoomRequestDto, Room>();
-            CreateMap<UpdateRoomRequestDto, Room>();
+            // Room → RoomResponseDto (GET endpoint)
+            CreateMap<Room, RoomResponseDto>()
+                .ForMember(dest => dest.FeatureIds, opt => opt.MapFrom(src =>
+                    src.RoomFeatures.Select(rf => rf.FeatureId).ToList()));
 
+            // CreateRoomRequestDto → Room (POST endpoint)
+            CreateMap<CreateRoomRequestDto, Room>()
+                .ForMember(dest => dest.RoomFeatures, opt => opt.Ignore()); // We’ll handle this manually in controller/repo
+
+            // UpdateRoomRequestDto → Room (PUT endpoint)
+            CreateMap<UpdateRoomRequestDto, Room>()
+                .ForMember(dest => dest.RoomFeatures, opt => opt.Ignore()); // Same as above
+
+            // RoomFeature ↔ RoomFeatureDto (if used anywhere)
             CreateMap<RoomFeature, RoomFeatureDto>().ReverseMap();
+
 
             // Meeting mappings
             CreateMap<Meeting, MeetingResponseDto>();
@@ -62,6 +72,12 @@ namespace SmartMeetingRoomAPI.Mappers
 
             //User mappings
             CreateMap<ApplicationUser, ApplicationUserDto>().ReverseMap();
+
+            //feature mappings
+            CreateMap<Feature, FeatureDto>().ReverseMap();
+            CreateMap<CreateFeatureRequestDTO, Feature>().ReverseMap();
+            CreateMap<UpdateFeatureDTO, Feature>().ReverseMap();
+
         }
     }
 }

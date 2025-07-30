@@ -51,6 +51,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddScoped<IRoomRepository, SqlRoomRepository>();
 builder.Services.AddScoped<IMeetingRepository, SqlMeetingRepository>();
 builder.Services.AddScoped<IUserRepository, SQLUserRepository>();
+builder.Services.AddScoped<IFeatureRepository, SqlFeatureRepository>();
 
 // Register AutoMapper profiles
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
