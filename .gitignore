@@ -1,11 +1,42 @@
-﻿.vs/
+﻿# Build and publish folders
 bin/
 obj/
+out/
+publish/
+
+# User-specific files
 *.user
 *.suo
+*.userosscache
+*.sln.docstates
+
+# Rider and VSCode/IDEA
+.vs/
 .idea/
+.vscode/
+
+# Logs and cache
+*.log
+*.cache
+
+# Compiled DLLs and executables
 *.dll
 *.exe
 *.pdb
-*.cache
-*.log
+
+# Configuration
+appsettings.json
+secrets.json
+
+# Others
+*.db
+*.mdf
+*.ldf
+
+# Resharper
+_ReSharper*/
+*.DotSettings.user
+
+# OS-specific
+.DS_Store
+Thumbs.db

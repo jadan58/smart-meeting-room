@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartMeetingRoomAPI.DTOs;
 using SmartMeetingRoomAPI.Models;
@@ -42,6 +43,7 @@ namespace SmartMeetingRoomAPI.Controllers
 
         // POST: api/Room
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<RoomResponseDto>> CreateRoom(CreateRoomRequestDto createDto)
         {
             var room = _mapper.Map<Room>(createDto);
@@ -55,6 +57,7 @@ namespace SmartMeetingRoomAPI.Controllers
 
         // PUT: api/Room/{id}
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<RoomResponseDto>> UpdateRoom(Guid id, UpdateRoomRequestDto updateDto)
         {
             var updatedRoom = _mapper.Map<Room>(updateDto);
@@ -69,6 +72,7 @@ namespace SmartMeetingRoomAPI.Controllers
 
         // DELETE: api/Room/{id}
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<RoomResponseDto>> DeleteRoom(Guid id)
         {
             var deletedRoom = await _roomRepository.DeleteAsync(id);
