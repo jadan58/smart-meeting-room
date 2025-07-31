@@ -11,5 +11,6 @@ namespace SmartMeetingRoomAPI.DTOs
         public string Location { get; set; }
 
         public List<Guid> FeatureIds { get; set; } 
+        
     }
 }
