@@ -53,6 +53,11 @@ namespace SmartMeetingRoomAPI.Controllers
             var meeting = _mapper.Map<Meeting>(dto);
             meeting.Id = Guid.NewGuid();
             meeting.UserId = userId;
+      
+            if(await IsRoomBookedAsync(meeting.RoomId, meeting.StartTime, meeting.EndTime))
+            {
+                return BadRequest("The room is already booked for the specified time.");
+            }
             var created = await _meetingRepository.AddAsync(meeting);
             var response = _mapper.Map<MeetingResponseDto>(created);
             return CreatedAtAction(nameof(GetMeetingById), new { id = response.Id }, response);
@@ -68,6 +73,10 @@ namespace SmartMeetingRoomAPI.Controllers
             if (existing.UserId != userId)
                 return Forbid("Only meeting creator can update the meeting.");
             var updatedModel = _mapper.Map<Meeting>(dto);
+            if (await IsRoomBookedAsync(updatedModel.RoomId, updatedModel.StartTime, updatedModel.EndTime))
+            {
+                return BadRequest("The room is already booked for the specified time.");
+            }
             var updated = await _meetingRepository.UpdateAsync(id, updatedModel);
             return Ok(_mapper.Map<MeetingResponseDto>(updated));
         }
@@ -182,15 +191,16 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var meeting = await _meetingRepository.GetByIdAsync(meetingId);
-            
+
             // Get the room for the meeting
-            var room = meeting?.Room; 
+            var room = meeting?.Room;
 
             // Check if the meeting exists
             if (meeting == null) return NotFound();
 
             //Check if the room is full
-            if (IsRoomFull(room,meeting)){
+            if (IsRoomFull(room, meeting))
+            {
                 return Forbid("Room is full, cannot add more invitees.");
             }
             // Check if the user is the creator of the meeting
@@ -258,5 +268,17 @@ namespace SmartMeetingRoomAPI.Controllers
             int currentOccupancy = meeting.Invitees.Count();
             return currentOccupancy >= room.Capacity;
         }
+        private async Task<bool> IsRoomBookedAsync(Guid roomId, DateTime startTime, DateTime endTime)
+        {
+            var meetings = await _meetingRepository.GetAllAsync();
+
+            return meetings.Any(m =>
+                m.RoomId == roomId &&
+                m.StartTime < endTime &&
+                m.EndTime > startTime &&
+                m.Status != "Cancelled");
+        }
+
+
     }
 }
