@@ -182,9 +182,21 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var meeting = await _meetingRepository.GetByIdAsync(meetingId);
+            
+            // Get the room for the meeting
+            var room = meeting?.Room; 
+
+            // Check if the meeting exists
             if (meeting == null) return NotFound();
+
+            //Check if the room is full
+            if (IsRoomFull(room,meeting)){
+                return Forbid("Room is full, cannot add more invitees.");
+            }
+            // Check if the user is the creator of the meeting
             if (meeting.UserId != userId)
                 return Forbid("Only meeting creator can add invitees.");
+
             var invitee = _mapper.Map<Invitee>(dto);
             invitee.Id = Guid.NewGuid();
             var added = await _meetingRepository.AddInviteeAsync(meetingId, invitee);
@@ -238,6 +250,13 @@ namespace SmartMeetingRoomAPI.Controllers
                 return Forbid("Only attachment uploader or meeting creator can delete this attachment.");
             var deleted = await _meetingRepository.DeleteAttachmentAsync(meetingId, attachmentId);
             return Ok(_mapper.Map<AttachmentDto>(deleted));
+        }
+        private bool IsRoomFull(Room room, Meeting meeting)
+        {
+            if (room == null) return true;
+            // Assuming room capacity is stored in the Room model
+            int currentOccupancy = meeting.Invitees.Count();
+            return currentOccupancy >= room.Capacity;
         }
     }
 }
