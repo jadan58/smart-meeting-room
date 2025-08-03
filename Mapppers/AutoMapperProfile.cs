@@ -8,6 +8,7 @@ namespace SmartMeetingRoomAPI.Mappers
     {
         public AutoMapperProfile()
         {
+            CreateMap<AllMeetingsDto, Meeting>().ReverseMap();   
             // Room → RoomResponseDto (GET endpoint)
             CreateMap<Room, RoomResponseDto>()
                 .ForMember(dest => dest.FeatureIds, opt => opt.MapFrom(src =>

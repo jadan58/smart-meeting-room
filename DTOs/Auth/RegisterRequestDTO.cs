@@ -15,5 +15,8 @@ namespace SmartMeetingRoomAPI.DTOs.Auth
 
         [Required]
         public string Password { get; set; }
+        [Required]
+        public string Role { get; set; } // "Guest" or "Employee"
+
     }
 }

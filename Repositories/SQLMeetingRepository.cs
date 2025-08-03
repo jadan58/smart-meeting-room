@@ -16,16 +16,9 @@ namespace SmartMeetingRoomAPI.Repositories
             this.dbContext = dbContext;
         }
         //---------- Meetings ---------
-        public async Task<IEnumerable<Meeting>> GetAllAsync()
+        public async Task<List<Meeting>> GetAllAsync()
         {
-            return await dbContext.Meetings
-                .Include(m => m.Notes)
-                .Include(m => m.ActionItems)
-                .Include(m => m.Invitees)
-                .Include(m => m.Attachments)
-                .Include(m => m.RecurringBooking)
-                .Include(m => m.NextMeeting)
-                .ToListAsync();
+            return await dbContext.Meetings.ToListAsync();
         }
 
 
