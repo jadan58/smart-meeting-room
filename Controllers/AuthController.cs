@@ -29,6 +29,11 @@ namespace SmartMeetingRoomAPI.Controllers
             if (userExists != null)
                 return BadRequest("User already exists");
 
+            // Validate role
+            var validRoles = new[] { "Employee", "Guest" };
+            if (string.IsNullOrWhiteSpace(dto.Role) || !validRoles.Contains(dto.Role))
+                return BadRequest("Invalid role. Valid roles are: Employee, Guest.");
+
             var user = new ApplicationUser
             {
                 UserName = dto.Email,
@@ -43,11 +48,12 @@ namespace SmartMeetingRoomAPI.Controllers
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
 
-            // Assign Employee role automatically to all new registered users
-            await _userManager.AddToRoleAsync(user, "Employee");
+            // Assign selected role
+            await _userManager.AddToRoleAsync(user, dto.Role);
 
-            return Ok("User registered successfully");
+            return Ok("User registered successfully as " + dto.Role);
         }
+
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginRequestDto request)

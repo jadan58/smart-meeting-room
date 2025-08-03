@@ -7,7 +7,7 @@ namespace SmartMeetingRoomAPI.Repositories
 {
     public interface IMeetingRepository
     {
-        Task<IEnumerable<Meeting>> GetAllAsync();
+        Task<List<Meeting>> GetAllAsync();
         Task<Meeting?> GetByIdAsync(Guid id);
         Task<Meeting> AddAsync(Meeting meeting);
         Task<Meeting?> UpdateAsync(Guid id, Meeting meeting);

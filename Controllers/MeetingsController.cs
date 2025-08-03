@@ -28,7 +28,7 @@ namespace SmartMeetingRoomAPI.Controllers
         public async Task<ActionResult<IEnumerable<MeetingResponseDto>>> GetAllMeetings()
         {
             var meetings = await _meetingRepository.GetAllAsync();
-            return Ok(_mapper.Map<IEnumerable<MeetingResponseDto>>(meetings));
+            return Ok(_mapper.Map<IEnumerable<AllMeetingsDto>>(meetings));
         }
 
         // GET: api/Meeting/{id} (Creator only)
