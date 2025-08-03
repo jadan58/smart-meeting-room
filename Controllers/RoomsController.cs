@@ -11,6 +11,7 @@ namespace SmartMeetingRoomAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class RoomController : ControllerBase
     {
         private readonly IRoomRepository _roomRepository;

@@ -6,5 +6,6 @@
         public string Email { get; set; }
         public string firstName { get; set; }
         public string lastName { get; set; }
+        public List<string> Roles { get; set; } // Add this
     }
 }
