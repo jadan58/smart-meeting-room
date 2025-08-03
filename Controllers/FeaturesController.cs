@@ -9,6 +9,7 @@ namespace SmartMeetingRoomAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class FeaturesController : ControllerBase
     {
         private readonly IFeatureRepository _featureRepository;

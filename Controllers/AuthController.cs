@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using SmartMeetingRoomAPI.DTOs.Auth;
@@ -72,6 +73,55 @@ namespace SmartMeetingRoomAPI.Controllers
             });
         }
 
+        [HttpPut("role/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateUserRole(Guid id,UpdateUserRoleDTO updateUserDTO)
+        {
+            var user = await _userManager.FindByIdAsync(id.ToString());
+            if (user == null)
+                return NotFound("User not found");
+            var validRoles = new[] { "Employee", "Guest", "Admin" };
+            if(string.IsNullOrWhiteSpace(updateUserDTO.Role) || !validRoles.Contains(updateUserDTO.Role))
+                return BadRequest("Invalid role. Valid roles are: Employee, Guest, Admin.");
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            if (currentRoles.Contains(updateUserDTO.Role))
+                return BadRequest("User already has this role");
+            // Remove all current roles
+            var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            if (!removeResult.Succeeded)
+                return BadRequest("Failed to remove current roles");
+            // Add new role
+            var addResult = await _userManager.AddToRoleAsync(user, updateUserDTO.Role);
+            return addResult.Succeeded
+                ? Ok($"User role updated to {updateUserDTO.Role}")
+                : BadRequest("Failed to update user role");
+        }
+
+        [HttpPost("change-password")]
+        [Authorize]
+
+        public async Task<IActionResult> ChangePassword(ChangePasswordDTO dto)
+        {
+            if (dto.NewPassword != dto.ConfirmNewPassword)
+                return BadRequest("New password and confirmation do not match.");
+
+            // Get the current user ID from JWT claims
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null)
+                return Unauthorized("User ID not found in token.");
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound("User not found.");
+
+            var result = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
+            if (!result.Succeeded)
+                return BadRequest(result.Errors);
+
+            return Ok("Password changed successfully.");
+        }
+
+
         private async Task<string> GenerateJwtToken(ApplicationUser user)
         {
             var jwtSettings = _configuration.GetSection("Jwt");
@@ -83,6 +133,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var claims = new List<Claim>
     {
         new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
         new Claim(JwtRegisteredClaimNames.Email, user.Email),
         new Claim("firstName", user.FirstName ?? ""),
         new Claim("lastName", user.LastName ?? "")

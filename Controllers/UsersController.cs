@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using SmartMeetingRoomAPI.DTOs;
+using SmartMeetingRoomAPI.Models;
 using SmartMeetingRoomAPI.Repositories;
 
 namespace SmartMeetingRoomAPI.Controllers
@@ -13,18 +15,29 @@ namespace SmartMeetingRoomAPI.Controllers
     {
         private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public UsersController(IUserRepository userRepository, IMapper mapper)
+        public UsersController(IUserRepository userRepository, IMapper mapper, UserManager<ApplicationUser> userManager)
         {
             _userRepository = userRepository;
             _mapper = mapper;
+            _userManager = userManager;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAllUsers()
         {
             var users = await _userRepository.GetAllAsync();
-            return Ok(_mapper.Map<List<ApplicationUserDto>>(users));
+
+            var userDtos = new List<ApplicationUserDto>();
+            foreach (var user in users)
+            {
+                var dto = _mapper.Map<ApplicationUserDto>(user);
+                dto.Roles = (await _userManager.GetRolesAsync(user)).ToList();
+                userDtos.Add(dto);
+            }
+
+            return Ok(userDtos);
         }
 
         [HttpGet("{id}")]
@@ -32,7 +45,12 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var user = await _userRepository.GetByIdAsync(id);
             if (user == null) return NotFound();
-            return Ok(_mapper.Map<ApplicationUserDto>(user));
+
+            var dto = _mapper.Map<ApplicationUserDto>(user);
+            dto.Roles = (await _userManager.GetRolesAsync(user)).ToList();
+
+            return Ok(dto);
         }
+
     }
 }
