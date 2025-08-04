@@ -31,6 +31,7 @@ namespace SmartMeetingRoomAPI.Repositories
                 .Include(m => m.Attachments)
                 .Include(m => m.RecurringBooking)
                 .Include(m => m.NextMeeting)
+                .Include(m => m.Room)
                 .FirstOrDefaultAsync(m => m.Id == id);
         }
 
@@ -132,6 +133,7 @@ namespace SmartMeetingRoomAPI.Repositories
             item.Deadline = updatedItem.Deadline;
             item.Status = updatedItem.Status;
             item.Type = updatedItem.Type;
+            item.AssignedToUserId = updatedItem.AssignedToUserId;
             await dbContext.SaveChangesAsync();
             return item;
         }
@@ -163,7 +165,7 @@ namespace SmartMeetingRoomAPI.Repositories
         public async Task<Invitee?> DeleteInviteeAsync(Guid meetingId, Guid inviteeId)
         {
             var invitee = await dbContext.Invitees
-                .FirstOrDefaultAsync(i => i.Id == inviteeId && i.MeetingId == meetingId);
+                .FirstOrDefaultAsync(i => i.UserId == inviteeId && i.MeetingId == meetingId);
             if (invitee == null) return null;
 
             dbContext.Invitees.Remove(invitee);
@@ -196,9 +198,14 @@ namespace SmartMeetingRoomAPI.Repositories
             return attachment;
         }
 
-
-
-
+        async Task IMeetingRepository.AddRangeAsync(List<Meeting> meetings)
+        {
+            foreach (var meeting in meetings)
+            { 
+                var m = await dbContext.Meetings.AddAsync(meeting);
+            }
+            await dbContext.SaveChangesAsync();
+        }
 
     }
 }
