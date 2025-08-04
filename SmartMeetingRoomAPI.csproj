@@ -24,4 +24,12 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.13.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EditorConfigFiles Remove="C:\ids-intern\SmartMeetingRoomAPI\Repositories\.editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="C:\ids-intern\SmartMeetingRoomAPI\Repositories\.editorconfig" />
+  </ItemGroup>
+
 </Project>

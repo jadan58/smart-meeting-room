@@ -6,6 +6,9 @@ namespace SmartMeetingRoomAPI.DTOs
     public class AllMeetingsDto
     {
         public Guid Id { get; set; }
+        public Guid RoomId { get; set; }
+        public Guid RecurringBookingId { get; set; }
+        public Guid UserId { get; set; } // Organizer
         public string Title { get; set; }
         public string Agenda { get; set; }
         public DateTime StartTime { get; set; }

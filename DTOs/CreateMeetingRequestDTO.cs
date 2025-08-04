@@ -11,10 +11,5 @@ namespace SmartMeetingRoomAPI.DTOs
         public string Status { get; set; }
 
         public Guid RoomId { get; set; }
-        public Guid UserId { get; set; }
-
-        // Recurrence optional
-        public string RecurrencePattern { get; set; }
-        public DateTime? RecurrenceEndDate { get; set; }
     }
 }

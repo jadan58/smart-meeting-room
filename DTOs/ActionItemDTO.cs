@@ -11,7 +11,6 @@ namespace SmartMeetingRoomAPI.DTOs
         public string Status { get; set; }
         public DateTime Deadline { get; set; }
         public Guid AssignedToUserId { get; set; } // for reference
-        public ApplicationUser AssignedToUser { get; set; } // for displaying info
 
     }
 }

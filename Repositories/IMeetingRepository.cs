@@ -12,6 +12,8 @@ namespace SmartMeetingRoomAPI.Repositories
         Task<Meeting> AddAsync(Meeting meeting);
         Task<Meeting?> UpdateAsync(Guid id, Meeting meeting);
         Task<Meeting?> DeleteAsync(Guid id);
+        Task AddRangeAsync(List<Meeting> meetings);
+
 
         // Notes
         Task<Note?> AddNoteAsync(Guid meetingId, Note note);
@@ -30,6 +32,5 @@ namespace SmartMeetingRoomAPI.Repositories
         // Attachments
         Task<Attachment?> AddAttachmentAsync(Guid meetingId, Attachment attachment);
         Task<Attachment?> DeleteAttachmentAsync(Guid meetingId, Guid attachmentId);
-
     }
 }
