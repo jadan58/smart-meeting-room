@@ -46,7 +46,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var user = await _userRepository.GetByIdAsync(id);
             if (user == null) return NotFound();
 
-            var dto = _mapper.Map<ApplicationUserDto>(user);
+            var dto = _mapper.Map<UserReponseDTO>(user);
             dto.Roles = (await _userManager.GetRolesAsync(user)).ToList();
 
             return Ok(dto);

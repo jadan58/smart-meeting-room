@@ -17,9 +17,7 @@ namespace SmartMeetingRoomAPI.Models
         public int TotalMeetingTime { get; set; } = 0;
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
-
-        // Navigation properties (if needed later)
-        // public ICollection<Meeting> OrganizedMeetings { get; set; }
-        // public ICollection<Invitee> InvitedMeetings { get; set; }
+        public ICollection<Meeting> OrganizedMeetings { get; set; } = new List<Meeting>();
+        public ICollection<Invitee> InvitedMeetings { get; set; } = new List<Invitee>();
     }
 }

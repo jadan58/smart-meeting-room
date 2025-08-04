@@ -23,7 +23,13 @@ namespace SmartMeetingRoomAPI.Repositories
 
         public async Task<ApplicationUser?> GetByIdAsync(Guid id)
         {
-            return await dbContext.Users.FindAsync(id);
+            var user = await dbContext.Users
+                .Include(u => u.OrganizedMeetings)
+                .Include(u => u.InvitedMeetings)
+                    .ThenInclude(i => i.Meeting)
+                .FirstOrDefaultAsync(u => u.Id == id);
+            return user;
+
         }
 
         public async Task<ApplicationUser?> GetByEmailAsync(string email)

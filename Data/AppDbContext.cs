@@ -25,15 +25,12 @@ namespace SmartMeetingRoomAPI.Data
         {
             base.OnModelCreating(builder);
 
-            // ✅ Self-referencing relationship for NextMeeting
-            // ✅ Explicit Room → Meeting relationship
-             builder.Entity<Meeting>()
+            // ✅ Meeting → Room
+            builder.Entity<Meeting>()
                 .HasOne(m => m.Room)
                 .WithMany(r => r.Meetings)
                 .HasForeignKey(m => m.RoomId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-
 
             // ✅ Many-to-many join RoomFeature
             builder.Entity<RoomFeature>()
@@ -48,29 +45,46 @@ namespace SmartMeetingRoomAPI.Data
                 .HasForeignKey(rf => rf.FeatureId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // ✅ Prevent multiple cascade paths: use Restrict for Meeting relations
+            // ✅ Meeting → Invitee
             builder.Entity<Invitee>()
                 .HasOne(i => i.Meeting)
                 .WithMany(m => m.Invitees)
                 .HasForeignKey(i => i.MeetingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // ✅ ActionItem → Meeting
             builder.Entity<ActionItem>()
                 .HasOne(ai => ai.Meeting)
                 .WithMany(m => m.ActionItems)
                 .HasForeignKey(ai => ai.MeetingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // ✅ Note → Meeting
             builder.Entity<Note>()
                 .HasOne(n => n.Meeting)
                 .WithMany(m => m.Notes)
                 .HasForeignKey(n => n.MeetingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // ✅ Attachment → Meeting
             builder.Entity<Attachment>()
                 .HasOne(a => a.Meeting)
                 .WithMany(m => m.Attachments)
                 .HasForeignKey(a => a.MeetingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ✅ ApplicationUser → Organized Meetings
+            builder.Entity<Meeting>()
+                .HasOne(m => m.User)
+                .WithMany(u => u.OrganizedMeetings)
+                .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ✅ ApplicationUser → InvitedMeetings
+            builder.Entity<Invitee>()
+                .HasOne(i => i.User)
+                .WithMany(u => u.InvitedMeetings)
+                .HasForeignKey(i => i.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }
