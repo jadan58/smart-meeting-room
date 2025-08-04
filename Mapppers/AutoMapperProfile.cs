@@ -8,6 +8,8 @@ namespace SmartMeetingRoomAPI.Mappers
     {
         public AutoMapperProfile()
         {
+            CreateMap<UserReponseDTO, ApplicationUser>().ReverseMap();
+            CreateMap<NotificationDto, Notification>().ReverseMap();
             CreateMap<RecurringBooking, RecurringBookingResponseDto>().ReverseMap();
             // RecurringBooking ↔ RecurringBookingDto
             CreateMap<RecurringBooking, CreateRecurringMeetingRequestDTO>().ReverseMap();

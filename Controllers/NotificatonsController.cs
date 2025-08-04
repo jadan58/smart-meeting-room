@@ -61,6 +61,7 @@ public class NotificationsController : ControllerBase
 
 
     [HttpDelete("{id}")]
+    [Authorize(Roles ="Admin")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
