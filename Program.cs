@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -12,16 +12,19 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register DbContext with SQL Server connection
+// -----------------------
+// Database & Identity
+// -----------------------
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Register Identity with ApplicationUser and IdentityRole<Guid>
 builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
-// Configure JWT authentication
+// -----------------------
+// JWT Authentication
+// -----------------------
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
 
@@ -47,7 +50,9 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Register repositories
+// -----------------------
+// Repositories
+// -----------------------
 builder.Services.AddScoped<IRoomRepository, SqlRoomRepository>();
 builder.Services.AddScoped<IMeetingRepository, SqlMeetingRepository>();
 builder.Services.AddScoped<IUserRepository, SQLUserRepository>();
@@ -55,13 +60,33 @@ builder.Services.AddScoped<IFeatureRepository, SqlFeatureRepository>();
 builder.Services.AddScoped<INotificationsRepository, SQLNotificationsRepository>();
 builder.Services.AddScoped<IRecurringBookingRepository, SQLRecurringRepository>();
 
-// Register AutoMapper profiles
+// -----------------------
+// AutoMapper
+// -----------------------
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile).Assembly);
 
-// Add controllers
+// -----------------------
+// Controllers
+// -----------------------
 builder.Services.AddControllers();
 
-// Add Swagger/OpenAPI
+// -----------------------
+// CORS
+// -----------------------
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:5178") // ✅ match your React dev server
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+// -----------------------
+// Swagger
+// -----------------------
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -78,41 +103,46 @@ builder.Services.AddSwaggerGen(options =>
 
         Reference = new Microsoft.OpenApi.Models.OpenApiReference
         {
-            Id = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
+            Id = JwtBearerDefaults.AuthenticationScheme,
             Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme
         }
     };
 
     options.AddSecurityDefinition(jwtSecurityScheme.Reference.Id, jwtSecurityScheme);
-
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
     {
         { jwtSecurityScheme, Array.Empty<string>() }
     });
 });
 
-builder.Services.AddSwaggerGen();
-
+// -----------------------
+// Build App
+// -----------------------
 var app = builder.Build();
 
-// Use Swagger only in Development environment
+// Use Swagger in Development
 if (app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage();   // <-- show stack traces in-browser
+    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-
+// HTTPS redirection
 app.UseHttpsRedirection();
 
-// Add authentication/authorization middleware
+// ✅ CORS must come BEFORE authentication
+app.UseCors("AllowFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Map controllers
 app.MapControllers();
 
-// Seed test user on startup safely
+// -----------------------
+// Seed Test User
+// -----------------------
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -125,6 +155,5 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine($"Error seeding database: {ex.Message}");
     }
 }
-
 
 app.Run();
