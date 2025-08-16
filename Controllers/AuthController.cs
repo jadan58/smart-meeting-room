@@ -24,6 +24,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpPost("register")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Register(RegisterRequestDto dto)
         {
             var userExists = await _userManager.FindByEmailAsync(dto.Email);
