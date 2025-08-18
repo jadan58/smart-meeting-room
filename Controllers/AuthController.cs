@@ -76,13 +76,13 @@ namespace SmartMeetingRoomAPI.Controllers
 
         [HttpPut("role/{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateUserRole(Guid id,UpdateUserRoleDTO updateUserDTO)
+        public async Task<IActionResult> UpdateUserRole(Guid id, UpdateUserRoleDTO updateUserDTO)
         {
             var user = await _userManager.FindByIdAsync(id.ToString());
             if (user == null)
                 return NotFound("User not found");
             var validRoles = new[] { "Employee", "Guest", "Admin" };
-            if(string.IsNullOrWhiteSpace(updateUserDTO.Role) || !validRoles.Contains(updateUserDTO.Role))
+            if (string.IsNullOrWhiteSpace(updateUserDTO.Role) || !validRoles.Contains(updateUserDTO.Role))
                 return BadRequest("Invalid role. Valid roles are: Employee, Guest, Admin.");
             var currentRoles = await _userManager.GetRolesAsync(user);
             if (currentRoles.Contains(updateUserDTO.Role))
@@ -122,6 +122,22 @@ namespace SmartMeetingRoomAPI.Controllers
             return Ok("Password changed successfully.");
         }
 
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteUser(Guid id)
+        {
+            var user = await _userManager.FindByIdAsync(id.ToString());
+            if (user == null)
+                return NotFound("User not found.");
+
+            var result = await _userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+                return BadRequest(result.Errors);
+
+            return Ok("User deleted successfully.");
+        }
+
+
 
         private async Task<string> GenerateJwtToken(ApplicationUser user)
         {
@@ -153,6 +169,5 @@ namespace SmartMeetingRoomAPI.Controllers
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
-
     }
 }

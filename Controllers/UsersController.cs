@@ -52,5 +52,23 @@ namespace SmartMeetingRoomAPI.Controllers
             return Ok(dto);
         }
 
+        [HttpGet("email/{email}")]
+        [Authorize(Roles ="Admin")]
+        public async Task<IActionResult> GetUserByEmail(string email)
+        {
+            var user = await _userRepository.GetByEmailAsync(email);
+            if (user == null) return NotFound();
+            var dto = _mapper.Map<UserReponseDTO>(user);
+            dto.Roles = dto.Roles = (await _userManager.GetRolesAsync(user)).ToList();
+            return Ok(dto);
+        }
+        [HttpGet("count")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetUsersCount()
+        {
+            var users = await _userRepository.GetAllAsync();
+            var count = users.Count();
+            return Ok(new { Count = count });
+        }
     }
 }
