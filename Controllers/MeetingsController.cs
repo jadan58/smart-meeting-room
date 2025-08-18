@@ -11,19 +11,20 @@ namespace SmartMeetingRoomAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class MeetingController : ControllerBase
     {
+        private readonly IRoomRepository roomRepository;
         private readonly IMeetingRepository _meetingRepository;
         private readonly IRecurringBookingRepository _recurringBookingRepository;
         private readonly IMapper _mapper;
         private readonly ILogger<MeetingController> logger;
 
-        public MeetingController(
+        public MeetingController(IRoomRepository roomRepository,
             IMeetingRepository meetingRepository,
             IRecurringBookingRepository recurringBookingRepository,
             IMapper mapper, ILogger<MeetingController> logger)
         {
+            this.roomRepository = roomRepository;
             _meetingRepository = meetingRepository;
             _recurringBookingRepository = recurringBookingRepository;
             _mapper = mapper;
@@ -31,7 +32,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Admin")]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<MeetingResponseDto>>> GetAllMeetings()
         {
             var meetings = await _meetingRepository.GetAllAsync();
@@ -39,6 +40,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<ActionResult<MeetingResponseDto>> GetMeetingById(Guid id)
         {
             var userId = GetUserId();
@@ -49,7 +51,9 @@ namespace SmartMeetingRoomAPI.Controllers
             return Ok(_mapper.Map<MeetingResponseDto>(meeting));
         }
 
+
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<MeetingResponseDto>> CreateMeeting(CreateMeetingRequestDto dto)
         {
             var userId = GetUserId();
@@ -68,6 +72,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpPost("recurring")]
+        [Authorize]
         public async Task<ActionResult<RecurringBookingResponseDto>> CreateRecurringMeeting(CreateRecurringMeetingRequestDTO dto)
         {
             var userId = GetUserId();
@@ -139,6 +144,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<ActionResult<MeetingResponseDto>> UpdateMeeting(Guid id, UpdateMeetingRequestDto dto)
         {
             var userId = GetUserId();
@@ -169,6 +175,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpPost("{meetingId}/notes")]
+        [Authorize]
         public async Task<ActionResult<NoteDto>> AddNote(Guid meetingId, CreateNoteRequestDto dto)
         {
             var userId = GetUserId();
@@ -185,6 +192,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpPut("{meetingId}/notes/{noteId}")]
+        [Authorize] 
         public async Task<ActionResult<NoteDto>> UpdateNote(Guid meetingId, Guid noteId, UpdateNoteRequestDto dto)
         {
             var userId = GetUserId();
@@ -201,6 +209,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpDelete("{meetingId}/notes/{noteId}")]
+        [Authorize]
         public async Task<ActionResult<NoteDto>> DeleteNote(Guid meetingId, Guid noteId)
         {
             var userId = GetUserId();
@@ -216,6 +225,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpPost("{meetingId}/action-items")]
+        [Authorize]
         public async Task<ActionResult<ActionItemDto>> AddActionItem(Guid meetingId, CreateActionItemRequestDto dto)
         {
             var userId = GetUserId();
@@ -232,6 +242,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpPut("{meetingId}/action-items/{itemId}")]
+        [Authorize]
         public async Task<ActionResult<ActionItemDto>> UpdateActionItem(Guid meetingId, Guid itemId, UpdateActionItemRequestDto dto)
         {
             var userId = GetUserId();
@@ -247,6 +258,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpDelete("{meetingId}/action-items/{itemId}")]
+        [Authorize]
         public async Task<ActionResult<ActionItemDto>> DeleteActionItem(Guid meetingId, Guid itemId)
         {
             var userId = GetUserId();
@@ -260,6 +272,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpPost("{meetingId}/invitees")]
+        [Authorize]
         public async Task<ActionResult<InviteeDto>> AddInvitee(Guid meetingId, CreateInviteeRequestDto dto)
         {
             var userId = GetUserId();
@@ -276,6 +289,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpDelete("{meetingId}/invitees/{inviteeId}")]
+        [Authorize]
         public async Task<ActionResult<InviteeDto>> DeleteInvitee(Guid meetingId, Guid inviteeId)
         {
             var userId = GetUserId();
@@ -288,6 +302,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpPost("{meetingId}/attachments")]
+        [Authorize]
         public async Task<ActionResult<AttachmentDto>> AddAttachment(Guid meetingId, CreateAttachmentRequestDto dto)
         {
             var userId = GetUserId();
@@ -305,6 +320,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpDelete("{meetingId}/attachments/{attachmentId}")]
+        [Authorize]
         public async Task<ActionResult<AttachmentDto>> DeleteAttachment(Guid meetingId, Guid attachmentId)
         {
             var userId = GetUserId();
@@ -343,5 +359,39 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             return await _meetingRepository.GetByIdAsync(meetingId);
         }
+
+        [HttpGet("count")]
+        public async Task<ActionResult<int>> GetMeetingsCount()
+        {
+            var meetings = await _meetingRepository.GetAllAsync();
+            return Ok(meetings.Count);
+        }
+
+        [HttpGet("top-rooms")]
+        public async Task<ActionResult<IEnumerable<RoomResponseDto>>> GetTopBookedRooms()
+        {
+            var meetings = await _meetingRepository.GetAllAsync();
+
+            // Get top 3 room IDs by booking count (excluding cancelled)
+            var topRoomIds = meetings
+                .Where(m => m.Status != "Cancelled")
+                .GroupBy(m => m.RoomId)
+                .OrderByDescending(g => g.Count())
+                .Take(3)
+                .Select(g => g.Key)
+                .ToList();
+
+            // Fetch the Room entities for these IDs
+            var rooms = await roomRepository.GetAllAsync(); // assuming this exists
+            var topRooms = rooms
+                .Where(r => topRoomIds.Contains(r.Id))
+                .OrderBy(r => topRoomIds.IndexOf(r.Id)) // optional: maintain same order as topRoomIds
+                .Take(3)
+                .ToList();
+
+            var result = _mapper.Map<IEnumerable<RoomResponseDto>>(topRooms);
+            return Ok(result);
+        }
+
     }
 }

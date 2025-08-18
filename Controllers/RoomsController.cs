@@ -142,5 +142,11 @@ namespace SmartMeetingRoomAPI.Controllers
 
             return Ok(_mapper.Map<RoomResponseDto>(deletedRoom));
         }
+        [HttpGet("count")]
+        public async Task<ActionResult<int>> GetRoomsCount()
+        {
+            var count = await _context.Rooms.CountAsync();
+            return Ok(count);
+        }
     }
 }
