@@ -162,6 +162,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<ActionResult<MeetingResponseDto>> DeleteMeeting(Guid id)
         {
             var userId = GetUserId();
@@ -372,7 +373,6 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var meetings = await _meetingRepository.GetAllAsync();
 
-            // Get top 3 room IDs by booking count (excluding cancelled)
             var topRoomIds = meetings
                 .Where(m => m.Status != "Cancelled")
                 .GroupBy(m => m.RoomId)
@@ -381,11 +381,10 @@ namespace SmartMeetingRoomAPI.Controllers
                 .Select(g => g.Key)
                 .ToList();
 
-            // Fetch the Room entities for these IDs
-            var rooms = await roomRepository.GetAllAsync(); // assuming this exists
+            var rooms = await roomRepository.GetAllAsync(); 
             var topRooms = rooms
                 .Where(r => topRoomIds.Contains(r.Id))
-                .OrderBy(r => topRoomIds.IndexOf(r.Id)) // optional: maintain same order as topRoomIds
+                .OrderBy(r => topRoomIds.IndexOf(r.Id)) 
                 .Take(3)
                 .ToList();
 

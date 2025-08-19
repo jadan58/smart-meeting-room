@@ -11,7 +11,6 @@ namespace SmartMeetingRoomAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class RoomController : ControllerBase
     {
         private readonly IRoomRepository _roomRepository;
@@ -28,6 +27,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<RoomResponseDto>>> GetAllRooms()
         {
             var rooms = await _roomRepository.GetAllAsync();
@@ -35,6 +35,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<ActionResult<RoomResponseDto>> GetRoomById(Guid id)
         {
             var room = await _roomRepository.GetByIdAsync(id);
@@ -142,6 +143,7 @@ namespace SmartMeetingRoomAPI.Controllers
 
             return Ok(_mapper.Map<RoomResponseDto>(deletedRoom));
         }
+
         [HttpGet("count")]
         public async Task<ActionResult<int>> GetRoomsCount()
         {

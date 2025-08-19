@@ -10,7 +10,6 @@ namespace SmartMeetingRoomAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class UsersController : ControllerBase
     {
         private readonly IUserRepository _userRepository;
@@ -25,6 +24,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetAllUsers()
         {
             var users = await _userRepository.GetAllAsync();
@@ -41,6 +41,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<IActionResult> GetUserById(Guid id)
         {
             var user = await _userRepository.GetByIdAsync(id);
@@ -63,7 +64,6 @@ namespace SmartMeetingRoomAPI.Controllers
             return Ok(dto);
         }
         [HttpGet("count")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetUsersCount()
         {
             var users = await _userRepository.GetAllAsync();
