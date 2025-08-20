@@ -50,7 +50,7 @@ namespace SmartMeetingRoomAPI.Data
                 .HasOne(i => i.Meeting)
                 .WithMany(m => m.Invitees)
                 .HasForeignKey(i => i.MeetingId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             // ✅ ActionItem → Meeting
             builder.Entity<ActionItem>()

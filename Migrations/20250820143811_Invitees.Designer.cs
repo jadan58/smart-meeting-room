@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SmartMeetingRoomAPI.Data;
 
@@ -11,9 +12,11 @@ using SmartMeetingRoomAPI.Data;
 namespace SmartMeetingRoomAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250820143811_Invitees")]
+    partial class Invitees
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -639,7 +642,7 @@ namespace SmartMeetingRoomAPI.Migrations
                     b.HasOne("SmartMeetingRoomAPI.Models.Meeting", "Meeting")
                         .WithMany("Invitees")
                         .HasForeignKey("MeetingId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("SmartMeetingRoomAPI.Models.ApplicationUser", "User")
