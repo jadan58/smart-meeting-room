@@ -64,7 +64,7 @@ namespace SmartMeetingRoomAPI.Controllers
             if (meeting.StartTime >= meeting.EndTime)
                 return BadRequest("StartTime must be before EndTime.");
 
-            if (await IsRoomBookedAsync(meeting.RoomId, meeting.StartTime, meeting.EndTime))
+            if (await IsRoomBookedAsync(meeting.RoomId,meeting.Id, meeting.StartTime, meeting.EndTime))
                 return BadRequest("The room is already booked for the specified time.");
 
             var created = await _meetingRepository.AddAsync(meeting);
@@ -82,9 +82,9 @@ namespace SmartMeetingRoomAPI.Controllers
 
             if (dto.RecurrenceEndDate < dto.StartTime)
                 return BadRequest("RecurrenceEndDate must be on or after StartTime.");
-
+            Guid Dummy = Guid.Empty;
             // Check initial booking conflict
-            if (await IsRoomBookedAsync(dto.RoomId, dto.StartTime, dto.EndTime))
+            if (await IsRoomBookedAsync(dto.RoomId,Dummy,dto.StartTime, dto.EndTime))
                 return BadRequest("The room is already booked for the specified time.");
 
             var recurringBookingId = Guid.NewGuid();
@@ -110,7 +110,7 @@ namespace SmartMeetingRoomAPI.Controllers
             while (currentStart <= dto.RecurrenceEndDate)
             {
                 // Skip conflicts beyond the first if necessary, or stop
-                if (!await IsRoomBookedAsync(dto.RoomId, currentStart, currentEnd))
+                if (!await IsRoomBookedAsync(dto.RoomId,Dummy, currentStart, currentEnd))
                 {
                     meetings.Add(new Meeting
                     {
@@ -154,7 +154,7 @@ namespace SmartMeetingRoomAPI.Controllers
                 return Forbid("Only meeting creator can update the meeting.");
 
             var updatedModel = _mapper.Map<Meeting>(dto);
-            if (await IsRoomBookedAsync(updatedModel.RoomId, updatedModel.StartTime, updatedModel.EndTime))
+            if (await IsRoomBookedAsync(updatedModel.RoomId,id, updatedModel.StartTime, updatedModel.EndTime))
                 return BadRequest("The room is already booked for the specified time.");
 
             var updated = await _meetingRepository.UpdateAsync(id, updatedModel);
@@ -351,10 +351,10 @@ namespace SmartMeetingRoomAPI.Controllers
             logger.LogError(room.Capacity + " " + meeting.Invitees.Count());
             return room == null || meeting.Invitees.Count() >= room.Capacity;
         }
-        private async Task<bool> IsRoomBookedAsync(Guid roomId, DateTime startTime, DateTime endTime)
+        private async Task<bool> IsRoomBookedAsync(Guid roomId,Guid meetingId, DateTime startTime, DateTime endTime)
         {
             var meetings = await _meetingRepository.GetAllAsync();
-            return meetings.Any(m => m.RoomId == roomId && m.StartTime < endTime && m.EndTime > startTime && m.Status != "Cancelled");
+            return meetings.Any(m => m.RoomId == roomId && m.StartTime < endTime && m.EndTime > startTime && m.Status != "Cancelled"&&m.Id!=meetingId);
         }
         private async Task<Meeting> EnsureMeetingAsync(Guid meetingId)
         {

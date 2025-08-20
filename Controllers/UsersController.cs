@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using SmartMeetingRoomAPI.DTOs;
 using SmartMeetingRoomAPI.Models;
 using SmartMeetingRoomAPI.Repositories;
+using System.Security.Claims;
 
 namespace SmartMeetingRoomAPI.Controllers
 {
@@ -39,9 +40,24 @@ namespace SmartMeetingRoomAPI.Controllers
 
             return Ok(userDtos);
         }
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value; // Or "sub"
+            if (userId == null) return Unauthorized();
+
+            var user = await _userRepository.GetByIdAsync(Guid.Parse(userId));
+            if (user == null) return NotFound();
+
+            var dto = _mapper.Map<UserReponseDTO>(user);
+            dto.Roles = (await _userManager.GetRolesAsync(user)).ToList();
+
+            return Ok(dto);
+        }
 
         [HttpGet("{id}")]
-        [Authorize]
+        [Authorize(Roles ="Admin")]
         public async Task<IActionResult> GetUserById(Guid id)
         {
             var user = await _userRepository.GetByIdAsync(id);
