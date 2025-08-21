@@ -26,7 +26,6 @@ namespace SmartMeetingRoomAPI.Repositories
             var user = await dbContext.Users
                 .Include(u => u.OrganizedMeetings)
                 .Include(u => u.InvitedMeetings)
-                    .ThenInclude(i => i.Meeting)
                 .FirstOrDefaultAsync(u => u.Id == id);
             return user;
 

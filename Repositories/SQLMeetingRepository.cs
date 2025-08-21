@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using SmartMeetingRoomAPI.Data;
 using SmartMeetingRoomAPI.Models;
 using System;
@@ -10,10 +11,12 @@ namespace SmartMeetingRoomAPI.Repositories
     public class SqlMeetingRepository : IMeetingRepository
     {
         private readonly AppDbContext dbContext;
+        private readonly UserManager<ApplicationUser> userManager;
 
-        public SqlMeetingRepository(AppDbContext dbContext)
+        public SqlMeetingRepository(AppDbContext dbContext, UserManager<ApplicationUser> userManager)
         {
             this.dbContext = dbContext;
+            this.userManager = userManager;
         }
         //---------- Meetings ---------
         public async Task<List<Meeting>> GetAllAsync()
@@ -157,6 +160,20 @@ namespace SmartMeetingRoomAPI.Repositories
             if (meeting == null) return null;
 
             invitee.MeetingId = meetingId;
+            var user = await userManager.FindByIdAsync(invitee.UserId.ToString());
+            if (user == null)
+                return null;
+
+            // Ensure InvitedMeetings is loaded and not null
+            if (user.InvitedMeetings == null)
+            {
+                dbContext.Entry(user).Collection(u => u.InvitedMeetings).Load();
+                if (user.InvitedMeetings == null)
+                    user.InvitedMeetings = new List<Meeting>();
+            }
+
+            user.InvitedMeetings.Add(meeting);
+
             await dbContext.Invitees.AddAsync(invitee);
             await dbContext.SaveChangesAsync();
             return invitee;
@@ -167,6 +184,17 @@ namespace SmartMeetingRoomAPI.Repositories
             var invitee = await dbContext.Invitees
                 .FirstOrDefaultAsync(i => i.UserId == inviteeId && i.MeetingId == meetingId);
             if (invitee == null) return null;
+
+            // Remove meeting from user's InvitedMeetings list if loaded
+            var user = await dbContext.Users.FindAsync(inviteeId);
+            if (user != null && user.InvitedMeetings != null)
+            {
+                var meeting = await dbContext.Meetings.FindAsync(meetingId);
+                if (meeting != null)
+                {
+                    user.InvitedMeetings.Remove(meeting);
+                }
+            }
 
             dbContext.Invitees.Remove(invitee);
             await dbContext.SaveChangesAsync();
