@@ -17,6 +17,6 @@ namespace SmartMeetingRoomAPI.DTOs
         public List<string> Roles { get; set; } 
 
         public ICollection<AllMeetingsDto> OrganizedMeetings { get; set; } = new List<AllMeetingsDto>();
-        public ICollection<InviteeDto> InvitedMeetings { get; set; } = new List<InviteeDto>();
+        public ICollection<AllMeetingsDto> InvitedMeetings { get; set; } = new List<AllMeetingsDto>();
     }
 }

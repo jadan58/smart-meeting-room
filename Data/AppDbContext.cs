@@ -83,7 +83,7 @@ namespace SmartMeetingRoomAPI.Data
             // ✅ ApplicationUser → InvitedMeetings
             builder.Entity<Invitee>()
                 .HasOne(i => i.User)
-                .WithMany(u => u.InvitedMeetings)
+                .WithMany()
                 .HasForeignKey(i => i.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
         }

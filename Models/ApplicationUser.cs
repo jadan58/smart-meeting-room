@@ -18,6 +18,6 @@ namespace SmartMeetingRoomAPI.Models
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
         public ICollection<Meeting> OrganizedMeetings { get; set; } = new List<Meeting>();
-        public ICollection<Invitee> InvitedMeetings { get; set; } = new List<Invitee>();
+        public ICollection<Meeting> InvitedMeetings { get; set; } = new List<Meeting>();
     }
 }
