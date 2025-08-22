@@ -234,8 +234,8 @@ namespace SmartMeetingRoomAPI.Controllers
             if (meeting == null) return NotFound();
             if (!IsCreator(meeting, userId))
                 return Forbid("Only meeting creator can add action items.");
-            if (!IsCreatorOrInvitee(meeting, dto.AssignedToUserId))
-                return BadRequest("User is not invited.");
+            if (dto.Status != "Open" && dto.Status != "Closed")
+                return Forbid("Invalid status, enter Open or Closed");
             var item = _mapper.Map<ActionItem>(dto);
             item.Id = Guid.NewGuid();
             var added = await _meetingRepository.AddActionItemAsync(meetingId, item);
@@ -251,10 +251,25 @@ namespace SmartMeetingRoomAPI.Controllers
             if (meeting == null) return NotFound();
             if (!IsCreator(meeting, userId))
                 return Forbid("Only meeting creator can update action items.");
-            if (!IsCreatorOrInvitee(meeting, dto.AssignedToUserId))
-                return BadRequest("User is not invited.");
+            if (dto.Status != "Open" && dto.Status != "Closed")
+                return Forbid("Invalid status, enter Open or Closed");
             var updatedItem = _mapper.Map<ActionItem>(dto);
             var updated = await _meetingRepository.UpdateActionItemAsync(meetingId, itemId, updatedItem);
+            return Ok(_mapper.Map<ActionItemDto>(updated));
+        }
+        [HttpPut("{meetingId}/action-items/{itemId}/toggle-status")]
+        [Authorize]
+        public async Task<ActionResult<ActionItemDto>> ToggleStatus(Guid meetingId, Guid itemId)
+        {
+            var userId = GetUserId();
+            var meeting = await EnsureMeetingAsync(meetingId);
+            if (meeting == null) return NotFound();
+            var item = meeting.ActionItems.FirstOrDefault(ai => ai.Id == itemId);
+            if (item == null) return NotFound();
+            if (userId!=item.AssignedToUserId)
+                return Forbid("Only the user that this task is assigned to can toggle its status.");
+            item.Status = item.Status == "Open" ? "Closed" : "Open";
+            var updated = await _meetingRepository.UpdateActionItemAsync(meetingId, itemId, item);
             return Ok(_mapper.Map<ActionItemDto>(updated));
         }
 
