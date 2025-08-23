@@ -234,29 +234,14 @@ namespace SmartMeetingRoomAPI.Controllers
             if (meeting == null) return NotFound();
             if (!IsCreator(meeting, userId))
                 return Forbid("Only meeting creator can add action items.");
-            if (dto.Status != "Open" && dto.Status != "Closed")
-                return Forbid("Invalid status, enter Open or Closed");
+            if (!IsCreatorOrInvitee(meeting, dto.AssignedToUserId))
+                return Forbid("Action items can only be assigned to invitees");
             var item = _mapper.Map<ActionItem>(dto);
             item.Id = Guid.NewGuid();
             var added = await _meetingRepository.AddActionItemAsync(meetingId, item);
             return Ok(_mapper.Map<ActionItemDto>(added));
         }
 
-        [HttpPut("{meetingId}/action-items/{itemId}")]
-        [Authorize]
-        public async Task<ActionResult<ActionItemDto>> UpdateActionItem(Guid meetingId, Guid itemId, UpdateActionItemRequestDto dto)
-        {
-            var userId = GetUserId();
-            var meeting = await EnsureMeetingAsync(meetingId);
-            if (meeting == null) return NotFound();
-            if (!IsCreator(meeting, userId))
-                return Forbid("Only meeting creator can update action items.");
-            if (dto.Status != "Open" && dto.Status != "Closed")
-                return Forbid("Invalid status, enter Open or Closed");
-            var updatedItem = _mapper.Map<ActionItem>(dto);
-            var updated = await _meetingRepository.UpdateActionItemAsync(meetingId, itemId, updatedItem);
-            return Ok(_mapper.Map<ActionItemDto>(updated));
-        }
         [HttpPut("{meetingId}/action-items/{itemId}/toggle-status")]
         [Authorize]
         public async Task<ActionResult<ActionItemDto>> ToggleStatus(Guid meetingId, Guid itemId)
@@ -268,11 +253,27 @@ namespace SmartMeetingRoomAPI.Controllers
             if (item == null) return NotFound();
             if (userId!=item.AssignedToUserId)
                 return Forbid("Only the user that this task is assigned to can toggle its status.");
-            item.Status = item.Status == "Open" ? "Closed" : "Open";
+            item.Status = item.Status == "Pending" ? "Submitted" : "Pending";
             var updated = await _meetingRepository.UpdateActionItemAsync(meetingId, itemId, item);
             return Ok(_mapper.Map<ActionItemDto>(updated));
         }
-
+        [HttpPut("{meetingId}/action-items/{itemId}/toggle-judgment")]
+        [Authorize]
+        public async Task<ActionResult<ActionItemDto>> ToggleJudgment(Guid meetingId, Guid itemId)
+        {
+            var userId = GetUserId();
+            var meeting = await EnsureMeetingAsync(meetingId);
+            if (meeting == null) return NotFound();
+            var item = meeting.ActionItems.FirstOrDefault(ai => ai.Id == itemId);
+            if (item == null) return NotFound();
+            if(item.Status!="Submitted")
+                return BadRequest("Only submitted tasks can be judged.");
+            if (!IsCreator(meeting, userId))
+                return Forbid("Only the creator of this task can toggle its judgment.");
+            item.Judgment = item.Judgment == "Rejected" ? "Accepted" : "Rejected";
+            var updated = await _meetingRepository.UpdateActionItemAsync(meetingId, itemId, item);
+            return Ok(_mapper.Map<ActionItemDto>(updated));
+        }
         [HttpDelete("{meetingId}/action-items/{itemId}")]
         [Authorize]
         public async Task<ActionResult<ActionItemDto>> DeleteActionItem(Guid meetingId, Guid itemId)
@@ -293,7 +294,6 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = GetUserId();
             var meeting = await EnsureMeetingAsync(meetingId);
-            Console.WriteLine(meeting);
             if (meeting == null) return NotFound();
             if (!IsCreator(meeting, userId)) return Forbid("Only meeting creator can add invitees.");
             if (IsRoomFull(meeting.Room, meeting)) return Forbid("Room is full, cannot add more invitees.");

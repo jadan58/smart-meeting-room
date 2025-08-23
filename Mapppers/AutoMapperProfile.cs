@@ -14,7 +14,7 @@ namespace SmartMeetingRoomAPI.Mappers
             // RecurringBooking ↔ RecurringBookingDto
             CreateMap<RecurringBooking, CreateRecurringMeetingRequestDTO>().ReverseMap();
 
-           
+            CreateMap<UserMeetingResponseDto, ApplicationUser>().ReverseMap();
             CreateMap<AllMeetingsDto, Meeting>().ReverseMap();   
             // Room → RoomResponseDto (GET endpoint)
             CreateMap<Room, RoomResponseDto>()

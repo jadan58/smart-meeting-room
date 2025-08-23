@@ -12,6 +12,8 @@ namespace SmartMeetingRoomAPI.DTOs
 
         [MaxLength(20)]
         public string Status { get; set; }
+        [MaxLength(20)]
+        public string Judgement { get; set; }
 
         [MaxLength(20)]
         public string Type { get; set; } // e.g., Decision, Task, Issue
