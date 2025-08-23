@@ -144,6 +144,68 @@ namespace SmartMeetingRoomAPI.Controllers
             return Ok(_mapper.Map<RoomResponseDto>(deletedRoom));
         }
 
+        [HttpPost("{id}/upload-image")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UploadRoomImage(Guid id, IFormFile file, [FromServices] IWebHostEnvironment env)
+        {
+            var room = await _roomRepository.GetByIdAsync(id);
+            if (room == null)
+                return NotFound("Room not found.");
+
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded.");
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+                return BadRequest("Invalid file type. Allowed: .jpg, .jpeg, .png, .gif");
+
+            var uploadsFolder = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "rooms");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var fileName = $"{Guid.NewGuid()}{extension}";
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            // Delete old image if exists
+            if (!string.IsNullOrEmpty(room.ImageUrl))
+            {
+                var oldImagePath = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), room.ImageUrl.TrimStart('/'));
+                if (System.IO.File.Exists(oldImagePath))
+                    System.IO.File.Delete(oldImagePath);
+            }
+
+            var relativePath = $"/uploads/rooms/{fileName}";
+            await _roomRepository.UpdateImageAsync(id, relativePath);
+
+            return Ok(new { room.Id, ImageUrl = relativePath });
+        }
+
+        [HttpDelete("{id}/delete-image")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteRoomImage(Guid id, [FromServices] IWebHostEnvironment env)
+        {
+            var room = await _roomRepository.GetByIdAsync(id);
+            if (room == null)
+                return NotFound("Room not found.");
+
+            if (string.IsNullOrEmpty(room.ImageUrl))
+                return BadRequest("This room has no image to delete.");
+
+            var imagePath = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), room.ImageUrl.TrimStart('/'));
+            if (System.IO.File.Exists(imagePath))
+                System.IO.File.Delete(imagePath);
+
+            await _roomRepository.UpdateImageAsync(id, null);
+
+            return NoContent();
+        }
+
         [HttpGet("count")]
         public async Task<ActionResult<int>> GetRoomsCount()
         {

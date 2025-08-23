@@ -63,5 +63,16 @@ namespace SmartMeetingRoomAPI.Repositories
             await dbContext.SaveChangesAsync();
             return room;
         }
+        public async Task<Room?> UpdateImageAsync(Guid id, string imageUrl)
+        {
+            var existingRoom = await dbContext.Rooms.FindAsync(id);
+            if (existingRoom == null)
+                return null;
+
+            existingRoom.ImageUrl = imageUrl;
+            await dbContext.SaveChangesAsync();
+            return existingRoom;
+        }
+
     }
 }

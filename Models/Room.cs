@@ -18,6 +18,10 @@ namespace SmartMeetingRoomAPI.Models
         [MaxLength(200)]
         public string Location { get; set; }
 
+        [MaxLength(300)]
+        public string? ImageUrl { get; set; }
+
+
         // Navigation
         public ICollection<Meeting> Meetings { get; set; } = new List<Meeting>();
         public ICollection<RoomFeature> RoomFeatures { get; set; } = new List<RoomFeature>();
