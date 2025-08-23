@@ -12,5 +12,7 @@ namespace SmartMeetingRoomAPI.Repositories
         Task<Room> AddAsync(Room room);
         Task<Room?> UpdateAsync(Guid id, Room room);
         Task<Room?> DeleteAsync(Guid id);
+        Task<Room?> UpdateImageAsync(Guid id, string imageUrl);
+
     }
 }
