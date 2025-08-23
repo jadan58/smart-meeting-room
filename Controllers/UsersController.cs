@@ -55,7 +55,49 @@ namespace SmartMeetingRoomAPI.Controllers
             dto.Roles = (await _userManager.GetRolesAsync(user)).ToList();
             return Ok(dto);
         }
+        [HttpGet("me/meetings/organized")]
+        [Authorize]
+        public async Task<IActionResult> GetOrganizedMeetings(int page = 1, int pageSize = 3)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return Unauthorized();
 
+            var user = await _userRepository.GetByIdAsync(Guid.Parse(userId));
+            if (user == null) return NotFound();
+
+            var dto = _mapper.Map<UserMeetingResponseDto>(user);
+
+            // Sort by start time
+            dto.OrganizedMeetings = dto.OrganizedMeetings
+                .OrderBy(m => m.StartTime) // assuming StartTime is DateTime
+                .Where(m => m.StartTime > DateTime.UtcNow)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Ok(dto.OrganizedMeetings);
+        }
+        [HttpGet("me/meetings/invited")]
+        [Authorize]
+        public async Task<IActionResult> GetInvitedMeetings(int page = 1, int pageSize = 3)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return Unauthorized();
+
+            var user = await _userRepository.GetByIdAsync(Guid.Parse(userId));
+            if (user == null) return NotFound();
+
+            var dto = _mapper.Map<UserMeetingResponseDto>(user);
+
+            dto.InvitedMeetings = dto.InvitedMeetings
+                .OrderBy(m => m.StartTime)
+                .Where(m => m.StartTime > DateTime.UtcNow)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Ok(dto.InvitedMeetings);
+        }
 
         [HttpGet("{id}")]
         [Authorize(Roles ="Admin")]

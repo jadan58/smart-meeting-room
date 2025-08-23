@@ -19,7 +19,9 @@ namespace SmartMeetingRoomAPI.Models
         public DateTime Deadline { get; set; }
 
         [MaxLength(20)]
-        public string Status { get; set; }
+        public string Status { get; set; } = "Pending";
+        [MaxLength(20)]
+        public string Judgment { get; set; } = "Rejected";
 
         [MaxLength(20)]
         public string Type { get; set; } // Decision, Task, Issue
