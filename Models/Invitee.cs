@@ -17,9 +17,9 @@ namespace SmartMeetingRoomAPI.Models
         public ApplicationUser User { get; set; }
 
         public string Email { get; set; }
-        public bool Attended { get; set; } = false;
 
-        [MaxLength(20)]
-        public string Status { get; set; } // Invited, Declined
+        public string Status { get; set; }="Pending"; // Pending, Answered
+
+        public string Attendance { get; set; } = "Declined"; // Accpeted, Declined
     }
 }

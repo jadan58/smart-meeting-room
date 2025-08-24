@@ -27,7 +27,8 @@ namespace SmartMeetingRoomAPI.Repositories
 
         // Invitees
         Task<Invitee?> AddInviteeAsync(Guid meetingId, Invitee invitee);
-        Task<Invitee?> DeleteInviteeAsync(Guid meetingId, Guid inviteeId);
+        Task<Invitee?> UpdateInviteeAsync(Guid inviteId, Invitee invitee);
+        Task<Invitee?> DeleteInviteeAsync(Guid inviteId);
 
         // Attachments
         Task<Attachment?> AddAttachmentAsync(Guid meetingId, Attachment attachment);

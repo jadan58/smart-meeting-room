@@ -66,10 +66,10 @@ namespace SmartMeetingRoomAPI.Mappers
 
             // Invitee mappings
             CreateMap<Invitee, InviteeDto>();
+
             CreateMap<CreateInviteeRequestDto, Invitee>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.MeetingId, opt => opt.Ignore())
-                .ForMember(dest => dest.Attended, opt => opt.MapFrom(src => false));
+                .ForMember(dest => dest.MeetingId, opt => opt.Ignore());
 
             // Attachment mappings
             CreateMap<Attachment, AttachmentDto>();

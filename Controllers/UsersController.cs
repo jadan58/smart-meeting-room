@@ -2,7 +2,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Serilog.Core;
+using SmartMeetingRoomAPI.Data;
 using SmartMeetingRoomAPI.DTOs;
 using SmartMeetingRoomAPI.Models;
 using SmartMeetingRoomAPI.Repositories;
@@ -99,8 +101,9 @@ namespace SmartMeetingRoomAPI.Controllers
             return Ok(dto.InvitedMeetings);
         }
 
+
         [HttpGet("{id}")]
-        [Authorize(Roles ="Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetUserById(Guid id)
         {
             var user = await _userRepository.GetByIdAsync(id);
@@ -113,7 +116,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpGet("email/{email}")]
-        [Authorize(Roles ="Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetUserByEmail(string email)
         {
             var user = await _userRepository.GetByEmailAsync(email);
@@ -129,5 +132,53 @@ namespace SmartMeetingRoomAPI.Controllers
             var count = users.Count();
             return Ok(new { Count = count });
         }
+
+        [HttpGet("me/invites/pending")]
+        [Authorize]
+        public async Task<IActionResult> GetPendingInvites([FromServices] AppDbContext dbContext, int page = 1, int pageSize = 3)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return Unauthorized();
+
+            var guidUserId = Guid.Parse(userId);
+
+            var pendingInvites = await dbContext.Invitees
+                .Where(inv => inv.UserId == guidUserId && inv.Status == "Pending" && inv.Meeting.StartTime > DateTime.UtcNow)
+                .OrderBy(inv => inv.Meeting.StartTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(inv => new MeetingWithInviteDto
+                {
+                    InviteId = inv.Id,
+                    Meeting = _mapper.Map<AllMeetingsDto>(inv.Meeting)
+                })
+                .ToListAsync();
+
+            return Ok(pendingInvites);
+        }
+        [HttpGet("me/invites/accepted")]
+        [Authorize]
+        public async Task<IActionResult> GetAcceptedInvites([FromServices] AppDbContext dbContext, int page = 1, int pageSize = 3)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return Unauthorized();
+
+            var guidUserId = Guid.Parse(userId);
+
+            var acceptedInvites = await dbContext.Invitees
+                .Where(inv => inv.UserId == guidUserId && inv.Status == "Answered" && inv.Attendance == "Accepted" && inv.Meeting.StartTime > DateTime.UtcNow)
+                .OrderBy(inv => inv.Meeting.StartTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(inv => new MeetingWithInviteDto
+                {
+                    InviteId = inv.Id,
+                    Meeting = _mapper.Map<AllMeetingsDto>(inv.Meeting)
+                })
+                .ToListAsync();
+
+            return Ok(acceptedInvites);
+        }
+
     }
 }

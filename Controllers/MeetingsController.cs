@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using SmartMeetingRoomAPI.Data;
 using SmartMeetingRoomAPI.DTOs;
 using SmartMeetingRoomAPI.Models;
 using SmartMeetingRoomAPI.Repositories;
@@ -13,17 +14,19 @@ namespace SmartMeetingRoomAPI.Controllers
     [Route("api/[controller]")]
     public class MeetingController : ControllerBase
     {
+        private readonly AppDbContext dbContext;
         private readonly IRoomRepository roomRepository;
         private readonly IMeetingRepository _meetingRepository;
         private readonly IRecurringBookingRepository _recurringBookingRepository;
         private readonly IMapper _mapper;
         private readonly ILogger<MeetingController> logger;
 
-        public MeetingController(IRoomRepository roomRepository,
+        public MeetingController(AppDbContext dbContext,IRoomRepository roomRepository,
             IMeetingRepository meetingRepository,
             IRecurringBookingRepository recurringBookingRepository,
             IMapper mapper, ILogger<MeetingController> logger)
         {
+            this.dbContext = dbContext;
             this.roomRepository = roomRepository;
             _meetingRepository = meetingRepository;
             _recurringBookingRepository = recurringBookingRepository;
@@ -64,7 +67,7 @@ namespace SmartMeetingRoomAPI.Controllers
             if (meeting.StartTime >= meeting.EndTime)
                 return BadRequest("StartTime must be before EndTime.");
 
-            if (await IsRoomBookedAsync(meeting.RoomId,meeting.Id, meeting.StartTime, meeting.EndTime))
+            if (await IsRoomBookedAsync(meeting.RoomId, meeting.Id, meeting.StartTime, meeting.EndTime))
                 return BadRequest("The room is already booked for the specified time.");
 
             var created = await _meetingRepository.AddAsync(meeting);
@@ -84,7 +87,7 @@ namespace SmartMeetingRoomAPI.Controllers
                 return BadRequest("RecurrenceEndDate must be on or after StartTime.");
             Guid Dummy = Guid.Empty;
             // Check initial booking conflict
-            if (await IsRoomBookedAsync(dto.RoomId,Dummy,dto.StartTime, dto.EndTime))
+            if (await IsRoomBookedAsync(dto.RoomId, Dummy, dto.StartTime, dto.EndTime))
                 return BadRequest("The room is already booked for the specified time.");
 
             var recurringBookingId = Guid.NewGuid();
@@ -110,7 +113,7 @@ namespace SmartMeetingRoomAPI.Controllers
             while (currentStart <= dto.RecurrenceEndDate)
             {
                 // Skip conflicts beyond the first if necessary, or stop
-                if (!await IsRoomBookedAsync(dto.RoomId,Dummy, currentStart, currentEnd))
+                if (!await IsRoomBookedAsync(dto.RoomId, Dummy, currentStart, currentEnd))
                 {
                     meetings.Add(new Meeting
                     {
@@ -154,7 +157,7 @@ namespace SmartMeetingRoomAPI.Controllers
                 return Forbid("Only meeting creator can update the meeting.");
 
             var updatedModel = _mapper.Map<Meeting>(dto);
-            if (await IsRoomBookedAsync(updatedModel.RoomId,id, updatedModel.StartTime, updatedModel.EndTime))
+            if (await IsRoomBookedAsync(updatedModel.RoomId, id, updatedModel.StartTime, updatedModel.EndTime))
                 return BadRequest("The room is already booked for the specified time.");
 
             var updated = await _meetingRepository.UpdateAsync(id, updatedModel);
@@ -193,7 +196,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpPut("{meetingId}/notes/{noteId}")]
-        [Authorize] 
+        [Authorize]
         public async Task<ActionResult<NoteDto>> UpdateNote(Guid meetingId, Guid noteId, UpdateNoteRequestDto dto)
         {
             var userId = GetUserId();
@@ -251,7 +254,7 @@ namespace SmartMeetingRoomAPI.Controllers
             if (meeting == null) return NotFound();
             var item = meeting.ActionItems.FirstOrDefault(ai => ai.Id == itemId);
             if (item == null) return NotFound();
-            if (userId!=item.AssignedToUserId)
+            if (userId != item.AssignedToUserId)
                 return Forbid("Only the user that this task is assigned to can toggle its status.");
             item.Status = item.Status == "Pending" ? "Submitted" : "Pending";
             var updated = await _meetingRepository.UpdateActionItemAsync(meetingId, itemId, item);
@@ -266,7 +269,7 @@ namespace SmartMeetingRoomAPI.Controllers
             if (meeting == null) return NotFound();
             var item = meeting.ActionItems.FirstOrDefault(ai => ai.Id == itemId);
             if (item == null) return NotFound();
-            if(item.Status!="Submitted")
+            if (item.Status != "Submitted")
                 return BadRequest("Only submitted tasks can be judged.");
             if (!IsCreator(meeting, userId))
                 return Forbid("Only the creator of this task can toggle its judgment.");
@@ -297,23 +300,25 @@ namespace SmartMeetingRoomAPI.Controllers
             if (meeting == null) return NotFound();
             if (!IsCreator(meeting, userId)) return Forbid("Only meeting creator can add invitees.");
             if (IsRoomFull(meeting.Room, meeting)) return Forbid("Room is full, cannot add more invitees.");
-
-            var invitee = _mapper.Map<Invitee>(dto);
+            var duplicate = meeting.Invitees.Any(i => i.UserId == dto.UserId);
+            if (duplicate) return BadRequest("User is already invited.");
+            var invitee = _mapper.Map<Invitee>(dto);    
             invitee.Id = Guid.NewGuid();
             var added = await _meetingRepository.AddInviteeAsync(meetingId, invitee);
             return Ok(_mapper.Map<InviteeDto>(added));
         }
 
-        [HttpDelete("{meetingId}/invitees/{inviteeId}")]
+        [HttpDelete("{meetingId}/invitees/{inviteId}")]
         [Authorize]
-        public async Task<ActionResult<InviteeDto>> DeleteInvitee(Guid meetingId, Guid inviteeId)
+        public async Task<ActionResult<InviteeDto>> DeleteInvitee(Guid inviteId)
         {
             var userId = GetUserId();
-            var meeting = await EnsureMeetingAsync(meetingId);
-            if (meeting == null) return NotFound();
+            var invite = dbContext.Invitees.Find(inviteId);
+            if(invite == null)
+                return NotFound("Invite not found.");
+            var meeting = await EnsureMeetingAsync(invite.MeetingId);
             if (!IsCreator(meeting, userId)) return Forbid("Only meeting creator can delete invitees.");
-            if (!IsCreatorOrInvitee(meeting, inviteeId)) return BadRequest("User is not invited.");
-            var deleted = await _meetingRepository.DeleteInviteeAsync(meetingId, inviteeId);
+            var deleted = await _meetingRepository.DeleteInviteeAsync(inviteId);
             return Ok(_mapper.Map<InviteeDto>(deleted));
         }
 
@@ -358,7 +363,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         private bool IsCreator(Meeting meeting, Guid userId) => meeting.UserId == userId;
-        private bool IsCreatorOrInvitee(Meeting meeting, Guid userId) => IsCreator(meeting, userId) || meeting.Invitees.Any(i => i.UserId == userId);
+        private bool IsCreatorOrInvitee(Meeting meeting, Guid userId) => IsCreator(meeting, userId) || meeting.Invitees.Any(i => i.UserId == userId && i.Attendance == "Accepted");
         private bool IsNoteOwner(Note note, Guid userId) => note.CreatedByUserId == userId;
         private bool IsAttachmentUploader(Attachment attachment, Guid userId) => attachment.UploadedByUserId == userId;
         private bool IsRoomFull(Room room, Meeting meeting)
@@ -366,10 +371,10 @@ namespace SmartMeetingRoomAPI.Controllers
             logger.LogError(room.Capacity + " " + meeting.Invitees.Count());
             return room == null || meeting.Invitees.Count() >= room.Capacity;
         }
-        private async Task<bool> IsRoomBookedAsync(Guid roomId,Guid meetingId, DateTime startTime, DateTime endTime)
+        private async Task<bool> IsRoomBookedAsync(Guid roomId, Guid meetingId, DateTime startTime, DateTime endTime)
         {
             var meetings = await _meetingRepository.GetAllAsync();
-            return meetings.Any(m => m.RoomId == roomId && m.StartTime < endTime && m.EndTime > startTime && m.Status != "Cancelled"&&m.Id!=meetingId);
+            return meetings.Any(m => m.RoomId == roomId && m.StartTime < endTime && m.EndTime > startTime && m.Status != "Cancelled" && m.Id != meetingId);
         }
         private async Task<Meeting> EnsureMeetingAsync(Guid meetingId)
         {
@@ -396,16 +401,53 @@ namespace SmartMeetingRoomAPI.Controllers
                 .Select(g => g.Key)
                 .ToList();
 
-            var rooms = await roomRepository.GetAllAsync(); 
+            var rooms = await roomRepository.GetAllAsync();
             var topRooms = rooms
                 .Where(r => topRoomIds.Contains(r.Id))
-                .OrderBy(r => topRoomIds.IndexOf(r.Id)) 
+                .OrderBy(r => topRoomIds.IndexOf(r.Id))
                 .Take(3)
                 .ToList();
 
             var result = _mapper.Map<IEnumerable<RoomResponseDto>>(topRooms);
             return Ok(result);
         }
+        [HttpPut("{meetingId}/invitees/{inviteId}/accept")]
+        [Authorize]
+        public async Task<ActionResult<InviteeDto>> AcceptInvite(Guid meetingId, Guid inviteId)
+        {
+            var userId = GetUserId();
+            var invite = dbContext.Invitees.Find(inviteId);
+            if(invite == null)
+                return NotFound("Invite not found.");
+          
+            if (userId != invite.UserId)
+                return Forbid("You can only accept your own invite.");
 
+            var meeting = await EnsureMeetingAsync(meetingId);
+            if (meeting == null) return NotFound();
+
+            invite.Status = "Answered";
+            invite.Attendance = "Accepted";
+
+            var updated = await _meetingRepository.UpdateInviteeAsync(inviteId,invite);
+            return Ok(_mapper.Map<InviteeDto>(updated));
+        }
+        [HttpPut("{meetingId}/invitees/{inviteId}/decline")]
+        [Authorize]
+        public async Task<ActionResult<InviteeDto>> DeclineInvite(Guid meetingId, Guid inviteId)
+        {
+            var userId = GetUserId();
+            var invite = dbContext.Invitees.Find(inviteId);
+            if(invite == null)
+                return NotFound("Invite not found.");
+            if (userId != invite.UserId)
+                return Forbid("You can only decline your own invite.");
+            var meeting = await EnsureMeetingAsync(meetingId);
+            if (meeting == null) return NotFound();
+            invite.Status = "Answered";
+            invite.Attendance = "Declined";
+            var updated = await _meetingRepository.UpdateInviteeAsync(inviteId, invite);
+            return Ok(_mapper.Map<InviteeDto>(updated));
+        }
     }
 }

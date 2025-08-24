@@ -179,26 +179,25 @@ namespace SmartMeetingRoomAPI.Repositories
             return invitee;
         }
 
-        public async Task<Invitee?> DeleteInviteeAsync(Guid meetingId, Guid inviteeId)
+        public async Task<Invitee?> DeleteInviteeAsync(Guid inviteId)
         {
-            var invitee = await dbContext.Invitees
-                .FirstOrDefaultAsync(i => i.UserId == inviteeId && i.MeetingId == meetingId);
-            if (invitee == null) return null;
-
+            var invite = await dbContext.Invitees
+                .FirstOrDefaultAsync(i => i.Id == inviteId);
+            if(invite == null) return null;
             // Remove meeting from user's InvitedMeetings list if loaded
-            var user = await dbContext.Users.FindAsync(inviteeId);
+            var user = await dbContext.Users.FindAsync(invite.UserId);
             if (user != null && user.InvitedMeetings != null)
             {
-                var meeting = await dbContext.Meetings.FindAsync(meetingId);
+                var meeting = await dbContext.Meetings.FindAsync(invite.MeetingId);
                 if (meeting != null)
                 {
                     user.InvitedMeetings.Remove(meeting);
                 }
             }
 
-            dbContext.Invitees.Remove(invitee);
+            dbContext.Invitees.Remove(invite);
             await dbContext.SaveChangesAsync();
-            return invitee;
+            return invite;
         }
 
         // ---------- Attachments ----------
@@ -234,6 +233,16 @@ namespace SmartMeetingRoomAPI.Repositories
             }
             await dbContext.SaveChangesAsync();
         }
+        public async Task<Invitee?> UpdateInviteeAsync(Guid inviteId, Invitee updatedInvitee)
+        {
+            var invite = await dbContext.Invitees
+                .FirstOrDefaultAsync(i => i.Id == inviteId);
+            if (invite == null) return null;
+            invite.Status = updatedInvitee.Status;
+            invite.Attendance = updatedInvitee.Attendance;
 
+            await dbContext.SaveChangesAsync();
+            return invite;
+        }
     }
 }
