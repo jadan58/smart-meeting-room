@@ -41,12 +41,13 @@ builder.Services.AddAuthentication(options =>
     {
         ValidateIssuer = true,
         ValidateAudience = true,
-        ValidateLifetime = true,
+        ValidateLifetime = true,             // ⬅️ Reject expired tokens
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(key),
-        RoleClaimType = ClaimTypes.Role
+        RoleClaimType = ClaimTypes.Role,
+        ClockSkew = TimeSpan.Zero            // ⬅️ No default 5 min grace period
     };
 });
 
@@ -77,7 +78,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5178") // ✅ match your React dev server
+        policy.WithOrigins("http://localhost:5178") // match your React dev server
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -120,7 +121,9 @@ builder.Services.AddSwaggerGen(options =>
 // -----------------------
 var app = builder.Build();
 
-// Use Swagger in Development
+// -----------------------
+// Swagger in Development
+// -----------------------
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -128,18 +131,18 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// HTTPS redirection
+// -----------------------
+// Middleware
+// -----------------------
 app.UseHttpsRedirection();
-
-// ✅ CORS must come BEFORE authentication
-app.UseCors("AllowFrontend");
-
+app.UseCors("AllowFrontend");   // CORS BEFORE authentication
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.UseStaticFiles();
 
+// -----------------------
 // Map controllers
+// -----------------------
 app.MapControllers();
 
 // -----------------------
