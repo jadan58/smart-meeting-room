@@ -33,5 +33,9 @@ namespace SmartMeetingRoomAPI.Repositories
         // Attachments
         Task<Attachment?> AddAttachmentAsync(Guid meetingId, Attachment attachment);
         Task<Attachment?> DeleteAttachmentAsync(Guid meetingId, Guid attachmentId);
+        Task UpdateSubmissionAttachmentsAsync(Guid itemId, List<string> newUrls);
+        Task UpdateAssignmentAttachmentsAsync(Guid itemId, List<string> newUrls);
+
+
     }
 }

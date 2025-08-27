@@ -6,6 +6,7 @@ using SmartMeetingRoomAPI.Data;
 using SmartMeetingRoomAPI.DTOs;
 using SmartMeetingRoomAPI.Models;
 using SmartMeetingRoomAPI.Repositories;
+using System;
 using System.Security.Claims;
 
 namespace SmartMeetingRoomAPI.Controllers
@@ -20,11 +21,12 @@ namespace SmartMeetingRoomAPI.Controllers
         private readonly IRecurringBookingRepository _recurringBookingRepository;
         private readonly IMapper _mapper;
         private readonly ILogger<MeetingController> logger;
+        private readonly IWebHostEnvironment _env;
 
         public MeetingController(AppDbContext dbContext,IRoomRepository roomRepository,
             IMeetingRepository meetingRepository,
             IRecurringBookingRepository recurringBookingRepository,
-            IMapper mapper, ILogger<MeetingController> logger)
+            IMapper mapper, ILogger<MeetingController> logger, IWebHostEnvironment env)
         {
             this.dbContext = dbContext;
             this.roomRepository = roomRepository;
@@ -32,6 +34,7 @@ namespace SmartMeetingRoomAPI.Controllers
             _recurringBookingRepository = recurringBookingRepository;
             _mapper = mapper;
             this.logger = logger;
+            _env = env;
         }
 
         [HttpGet]
@@ -449,5 +452,80 @@ namespace SmartMeetingRoomAPI.Controllers
             var updated = await _meetingRepository.UpdateInviteeAsync(inviteId, invite);
             return Ok(_mapper.Map<InviteeDto>(updated));
         }
+
+        [HttpPost("{meetingId}/action-items/{itemId}/assignment-attachments")]
+        [Authorize]
+        public async Task<IActionResult> UploadAssignmentAttachments(Guid itemId, List<IFormFile> files)
+        {
+            if (files == null || !files.Any())
+                return BadRequest("No files uploaded.");
+
+            // Ensure the uploads folder exists
+            var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                                             "uploads", "action-items", itemId.ToString(), "assignment");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var urls = new List<string>();
+            foreach (var file in files)
+            {
+                var extension = Path.GetExtension(file.FileName);
+                var fileName = $"{Guid.NewGuid()}{extension}";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                // Save the file
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                    await file.CopyToAsync(stream);
+
+                // Build relative URL from wwwroot
+                var relativePath = Path.Combine("uploads", "action-items", itemId.ToString(), "assignment", fileName)
+                                        .Replace("\\", "/"); // Forward slashes for URL
+                urls.Add("/" + relativePath); // Ensure URL starts with '/'
+            }
+
+            // Save URLs in the database
+            await _meetingRepository.UpdateAssignmentAttachmentsAsync(itemId, urls);
+
+            return Ok(new { itemId, urls });
+        }
+
+
+        [HttpPost("{meetingId}/action-items/{itemId}/submission-attachments")]
+        [Authorize]
+        public async Task<IActionResult> UploadSubmissionAttachments(Guid itemId, List<IFormFile> files)
+        {
+            if (files == null || !files.Any())
+                return BadRequest("No files uploaded.");
+
+            // Ensure the uploads folder exists
+            var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                                             "uploads", "action-items", itemId.ToString(), "submission");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var urls = new List<string>();
+            foreach (var file in files)
+            {
+                var extension = Path.GetExtension(file.FileName);
+                var fileName = $"{Guid.NewGuid()}{extension}";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                // Save the file
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                    await file.CopyToAsync(stream);
+
+                // Build relative URL from wwwroot
+                var relativePath = Path.Combine("uploads", "action-items", itemId.ToString(), "submission", fileName)
+                                        .Replace("\\", "/"); // Forward slashes for URL
+                urls.Add("/" + relativePath); // Ensure URL starts with '/'
+            }
+
+            // Save URLs in the database
+            await _meetingRepository.UpdateSubmissionAttachmentsAsync(itemId, urls);
+
+            return Ok(new { itemId, urls });
+        }
+
     }
+
 }

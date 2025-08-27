@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartMeetingRoomAPI.Data;
 using SmartMeetingRoomAPI.Models;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
 
 namespace SmartMeetingRoomAPI.Repositories
@@ -12,11 +14,13 @@ namespace SmartMeetingRoomAPI.Repositories
     {
         private readonly AppDbContext dbContext;
         private readonly UserManager<ApplicationUser> userManager;
+        private readonly IWebHostEnvironment env;
 
-        public SqlMeetingRepository(AppDbContext dbContext, UserManager<ApplicationUser> userManager)
+        public SqlMeetingRepository(AppDbContext dbContext, UserManager<ApplicationUser> userManager, IWebHostEnvironment env)
         {
             this.dbContext = dbContext;
             this.userManager = userManager;
+            this.env = env;
         }
         //---------- Meetings ---------
         public async Task<List<Meeting>> GetAllAsync()
@@ -244,5 +248,51 @@ namespace SmartMeetingRoomAPI.Repositories
             await dbContext.SaveChangesAsync();
             return invite;
         }
+ 
+        public async Task UpdateAssignmentAttachmentsAsync(Guid itemId, List<string> newUrls)
+        {
+            var item = await dbContext.ActionItems.FindAsync(itemId);
+            if (item == null) return;
+
+            // Delete old files
+            if (item.AssignmentAttachmentsUrl != null)
+            {
+                foreach (var relativePath in item.AssignmentAttachmentsUrl)
+                {
+                    var absolutePath = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                                                    relativePath.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString()));
+                    if (File.Exists(absolutePath))
+                        File.Delete(absolutePath);
+                }
+            }
+
+            // Replace with new list
+            item.AssignmentAttachmentsUrl = newUrls ?? new List<string>();
+            await dbContext.SaveChangesAsync();
+        }
+
+        // Replace submission attachments
+        public async Task UpdateSubmissionAttachmentsAsync(Guid itemId, List<string> newUrls)
+        {
+            var item = await dbContext.ActionItems.FindAsync(itemId);
+            if (item == null) return;
+
+            // Delete old files
+            if (item.SubmissionAttachmentsUrl != null)
+            {
+                foreach (var relativePath in item.SubmissionAttachmentsUrl)
+                {
+                    var absolutePath = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                                                    relativePath.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString()));
+                    if (File.Exists(absolutePath))
+                        File.Delete(absolutePath);
+                }
+            }
+
+            // Replace with new list
+            item.SubmissionAttachmentsUrl = newUrls ?? new List<string>();
+            await dbContext.SaveChangesAsync();
+        }
     }
-}
+}                                                                               
+  
