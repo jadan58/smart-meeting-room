@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SmartMeetingRoomAPI.Data;
 using SmartMeetingRoomAPI.DTOs;
@@ -457,8 +458,22 @@ namespace SmartMeetingRoomAPI.Controllers
         [Authorize]
         public async Task<IActionResult> UploadAssignmentAttachments(Guid itemId, List<IFormFile> files)
         {
+            var item = await dbContext.ActionItems
+                .Include(ai => ai.Meeting) // Load related Meeting
+                .FirstOrDefaultAsync(ai => ai.Id == itemId );
+            if (item == null)
+                return NotFound("Action item not found.");
             if (files == null || !files.Any())
                 return BadRequest("No files uploaded.");
+
+            if (!IsCreator(item.Meeting,GetUserId()))
+                return Forbid("Only the creator of this action item can upload assignment attachments.");
+            if(files.Count > 5)
+                return BadRequest("You can upload a maximum of 5 files.");
+            if(files.Any(f => f.Length > 5 * 1024 * 1024))
+                return BadRequest("Each file must be less than 5MB.");
+            if(files.Any(f => !new[] { ".jpg", ".jpeg", ".png", ".pdf", ".docx", ".xlsx", ".txt" }.Contains(Path.GetExtension(f.FileName).ToLower())))
+                return BadRequest("Only .jpg, .jpeg, .png, .pdf, .docx, .xlsx, .txt files are allowed.");
 
             // Ensure the uploads folder exists
             var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
@@ -494,9 +509,23 @@ namespace SmartMeetingRoomAPI.Controllers
         [Authorize]
         public async Task<IActionResult> UploadSubmissionAttachments(Guid itemId, List<IFormFile> files)
         {
+            var item = await dbContext.ActionItems
+                .Include(ai => ai.Meeting) // Load related Meeting
+                .FirstOrDefaultAsync(ai => ai.Id == itemId);
+            if (item == null)
+                return NotFound("Action item not found.");
+
+            if(item.AssignedToUserId != GetUserId())
+                return Forbid("Only the user assigned to this action item can upload submission attachments.");
+
             if (files == null || !files.Any())
                 return BadRequest("No files uploaded.");
-
+            if(files.Count > 5)
+                return BadRequest("You can upload a maximum of 5 files.");
+            if(files.Any(f => f.Length > 5 * 1024 * 1024))
+                return BadRequest("Each file must be less than 5MB.");
+            if(files.Any(f => !new[] { ".jpg", ".jpeg", ".png", ".pdf", ".docx", ".xlsx", ".txt" }.Contains(Path.GetExtension(f.FileName).ToLower())))
+                return BadRequest("Only .jpg, .jpeg, .png, .pdf, .docx, .xlsx, .txt files are allowed.");
             // Ensure the uploads folder exists
             var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
                                              "uploads", "action-items", itemId.ToString(), "submission");
