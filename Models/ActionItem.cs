@@ -14,8 +14,12 @@ namespace SmartMeetingRoomAPI.Models
 
         [Required]
         public Guid AssignedToUserId { get; set; }
+        [Required]
         public ApplicationUser AssignedToUser { get; set; }
 
+        public List<string>?AssignmentAttachmentsUrl { get; set; }
+
+        public List<string>? SubmissionAttachmentsUrl{ get; set; }
         public DateTime Deadline { get; set; }
 
         [MaxLength(20)]
