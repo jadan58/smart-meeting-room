@@ -20,13 +20,20 @@ namespace SmartMeetingRoomAPI.Controllers
         private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly AppDbContext _dbContext;
 
-        public UsersController(IUserRepository userRepository, IMapper mapper, UserManager<ApplicationUser> userManager)
+        public UsersController(
+            IUserRepository userRepository,
+            IMapper mapper,
+            UserManager<ApplicationUser> userManager,
+            AppDbContext dbContext) 
         {
             _userRepository = userRepository;
             _mapper = mapper;
             _userManager = userManager;
+            _dbContext = dbContext; 
         }
+
 
         [HttpGet]
         [Authorize]
@@ -203,6 +210,40 @@ namespace SmartMeetingRoomAPI.Controllers
             return Ok(new { Count = dailyMeetingCount });
         }
 
+        [HttpGet("me/meetings/heatmap")]
+        [Authorize]
+        public async Task<IActionResult> GetUserMeetingsHeatmap()
+        {
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdStr == null) return Unauthorized();
+
+            var userId = Guid.Parse(userIdStr);
+            var today = DateTime.UtcNow.Date;
+            var oneYearAgo = today.AddYears(-1);
+
+            // Query meetings organized or accepted by the user in the past year
+            var meetingsPerDay = await _dbContext.Meetings
+                .Where(m => m.StartTime >= oneYearAgo &&
+                           (m.UserId == userId ||
+                            m.Invitees.Any(i => i.UserId == userId && i.Status == "Answered" && i.Attendance == "Accepted")))
+                .GroupBy(m => m.StartTime.Date)
+                .Select(g => new
+                {
+                    Date = g.Key,
+                    Count = g.Count()
+                })
+                .ToListAsync();
+
+            // Fill missing dates with 0
+            var meetingCounts = new Dictionary<string, int>();
+            for (var date = oneYearAgo; date <= today; date = date.AddDays(1))
+            {
+                var match = meetingsPerDay.FirstOrDefault(m => m.Date == date);
+                meetingCounts[date.ToString("yyyy-MM-dd")] = match?.Count ?? 0;
+            }
+
+            return Ok(meetingCounts);
+        }
 
     }
 }
