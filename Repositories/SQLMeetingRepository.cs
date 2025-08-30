@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using SmartMeetingRoomAPI.Data;
 using SmartMeetingRoomAPI.Models;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Threading.Tasks;
 
@@ -35,7 +37,6 @@ namespace SmartMeetingRoomAPI.Repositories
                 .Include(m => m.Notes)
                 .Include(m => m.ActionItems)
                 .Include(m => m.Invitees)
-                .Include(m => m.Attachments)
                 .Include(m => m.RecurringBooking)
                 .Include(m => m.NextMeeting)
                 .Include(m => m.Room)
@@ -187,7 +188,7 @@ namespace SmartMeetingRoomAPI.Repositories
         {
             var invite = await dbContext.Invitees
                 .FirstOrDefaultAsync(i => i.Id == inviteId);
-            if(invite == null) return null;
+            if (invite == null) return null;
             // Remove meeting from user's InvitedMeetings list if loaded
             var user = await dbContext.Users.FindAsync(invite.UserId);
             if (user != null && user.InvitedMeetings != null)
@@ -232,7 +233,7 @@ namespace SmartMeetingRoomAPI.Repositories
         async Task IMeetingRepository.AddRangeAsync(List<Meeting> meetings)
         {
             foreach (var meeting in meetings)
-            { 
+            {
                 var m = await dbContext.Meetings.AddAsync(meeting);
             }
             await dbContext.SaveChangesAsync();
@@ -248,7 +249,7 @@ namespace SmartMeetingRoomAPI.Repositories
             await dbContext.SaveChangesAsync();
             return invite;
         }
- 
+
         public async Task UpdateAssignmentAttachmentsAsync(Guid itemId, List<string> newUrls)
         {
             var item = await dbContext.ActionItems.FindAsync(itemId);
@@ -293,6 +294,28 @@ namespace SmartMeetingRoomAPI.Repositories
             item.SubmissionAttachmentsUrl = newUrls ?? new List<string>();
             await dbContext.SaveChangesAsync();
         }
+        public async Task<Meeting?> UpdateAttachmentAsync(Guid meetingId, List<string> fileUrls)
+        {
+            var meeting = await dbContext.Meetings.FindAsync(meetingId);
+            if (meeting == null) return null;
+
+            // Delete old files
+            if (meeting.AttachmentUrls?.Any() == true)
+            {
+                foreach (var relativePath in meeting.AttachmentUrls)
+                {
+                    var absolutePath = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                                                    relativePath.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString()));
+                    if (File.Exists(absolutePath))
+                        File.Delete(absolutePath);
+                }
+            }
+
+            // Replace with new list
+            meeting.AttachmentUrls = fileUrls ?? new List<string>();
+            await dbContext.SaveChangesAsync();
+            return meeting;
+        }
+
     }
-}                                                                               
-  
+}

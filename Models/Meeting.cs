@@ -42,6 +42,6 @@ namespace SmartMeetingRoomAPI.Models
         public ICollection<Invitee> Invitees { get; set; } = new List<Invitee>();
         public ICollection<Note> Notes { get; set; } = new List<Note>();
         public ICollection<ActionItem> ActionItems { get; set; } = new List<ActionItem>();
-        public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
+        public List<string>? AttachmentUrls { get; set; }
     }
 }

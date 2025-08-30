@@ -66,12 +66,6 @@ namespace SmartMeetingRoomAPI.Data
                 .HasForeignKey(n => n.MeetingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // ✅ Attachment → Meeting
-            builder.Entity<Attachment>()
-                .HasOne(a => a.Meeting)
-                .WithMany(m => m.Attachments)
-                .HasForeignKey(a => a.MeetingId)
-                .OnDelete(DeleteBehavior.Restrict);
 
             // ✅ ApplicationUser → Organized Meetings
             builder.Entity<Meeting>()

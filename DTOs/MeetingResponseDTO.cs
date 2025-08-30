@@ -22,6 +22,6 @@ namespace SmartMeetingRoomAPI.DTOs
         public List<NoteDto> Notes { get; set; }
         public List<ActionItemDto> ActionItems { get; set; }
         public List<InviteeDto> Invitees { get; set; }
-        public List<AttachmentDto> Attachments { get; set; }
+        public List<string>? AttachmentUrls { get; set; }
     }
 }

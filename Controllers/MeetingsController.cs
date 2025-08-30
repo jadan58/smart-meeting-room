@@ -326,39 +326,7 @@ namespace SmartMeetingRoomAPI.Controllers
             return Ok(_mapper.Map<InviteeDto>(deleted));
         }
 
-        [HttpPost("{meetingId}/attachments")]
-        [Authorize]
-        public async Task<ActionResult<AttachmentDto>> AddAttachment(Guid meetingId, CreateAttachmentRequestDto dto)
-        {
-            var userId = GetUserId();
-            var meeting = await EnsureMeetingAsync(meetingId);
-            if (meeting == null) return NotFound();
-            if (!IsCreatorOrInvitee(meeting, userId)) return Forbid("Only meeting creator or invitees can add attachments.");
-
-            var attachment = _mapper.Map<Attachment>(dto);
-            attachment.Id = Guid.NewGuid();
-            attachment.UploadedByUserId = userId;
-            attachment.MeetingId = meetingId;
-
-            var added = await _meetingRepository.AddAttachmentAsync(meetingId, attachment);
-            return Ok(_mapper.Map<AttachmentDto>(added));
-        }
-
-        [HttpDelete("{meetingId}/attachments/{attachmentId}")]
-        [Authorize]
-        public async Task<ActionResult<AttachmentDto>> DeleteAttachment(Guid meetingId, Guid attachmentId)
-        {
-            var userId = GetUserId();
-            var meeting = await EnsureMeetingAsync(meetingId);
-            if (meeting == null) return NotFound();
-            var attachment = meeting.Attachments.FirstOrDefault(a => a.Id == attachmentId);
-            if (attachment == null) return NotFound();
-            if (!IsAttachmentUploader(attachment, userId) && !IsCreator(meeting, userId))
-                return Forbid("Only attachment uploader or meeting creator can delete this attachment.");
-
-            var deleted = await _meetingRepository.DeleteAttachmentAsync(meetingId, attachmentId);
-            return Ok(_mapper.Map<AttachmentDto>(deleted));
-        }
+     
 
         // PRIVATE HELPERS
         private Guid GetUserId()
@@ -555,6 +523,65 @@ namespace SmartMeetingRoomAPI.Controllers
             return Ok(new { itemId, urls });
         }
 
-    }
+        [HttpPost("{meetingId}/attachments")]
+        [Authorize]
+        public async Task<IActionResult> UploadMeetingAttachments(Guid meetingId, List<IFormFile> files, [FromServices] IWebHostEnvironment env)
+        {
+            var meeting = await _meetingRepository.GetByIdAsync(meetingId);
+            if (meeting == null)
+                return NotFound("Meeting not found.");
 
+            if (meeting.UserId != GetUserId())
+                return Forbid("Only the organizor of this meeting can upload attachments.");
+
+            if (files == null || !files.Any())
+                return BadRequest("No files uploaded.");
+
+            if (files.Count > 5)
+                return BadRequest("You can upload a maximum of 5 files.");
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf", ".docx", ".xlsx", ".txt" };
+            var uploadsFolder = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "meetings");
+
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var uploadedFiles = new List<string>();
+
+            foreach (var file in files)
+            {
+                if (file.Length == 0)
+                    return BadRequest("One or more files are empty.");
+
+                var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(extension))
+                    return BadRequest($"Invalid file type: {file.FileName}. Allowed: {string.Join(", ", allowedExtensions)}");
+
+                if (file.Length > 5 * 1024 * 1024)
+                    return BadRequest($"File {file.FileName} exceeds the 5MB limit.");
+
+                var fileName = $"{Guid.NewGuid()}{extension}";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                var relativePath = $"/uploads/meetings/{fileName}";
+                uploadedFiles.Add(relativePath);
+            }
+
+            // Save to repository (replaces old attachments and deletes old files)
+            var updatedMeeting = await _meetingRepository.UpdateAttachmentAsync(meetingId, uploadedFiles);
+
+            return Ok(new
+            {
+                MeetingId = updatedMeeting!.Id,
+                AttachmentUrls = updatedMeeting.AttachmentUrls
+            });
+        }
+
+
+    }
 }

@@ -8,6 +8,7 @@ using SmartMeetingRoomAPI.Data;
 using SmartMeetingRoomAPI.DTOs;
 using SmartMeetingRoomAPI.Models;
 using SmartMeetingRoomAPI.Repositories;
+using System.ComponentModel;
 using System.Security.Claims;
 
 namespace SmartMeetingRoomAPI.Controllers
@@ -179,6 +180,29 @@ namespace SmartMeetingRoomAPI.Controllers
 
             return Ok(acceptedInvites);
         }
+        [HttpGet("me/meetings/dailycount")]
+        [Authorize]
+        public async Task<IActionResult> GetDailyMeetingCount([FromServices] AppDbContext dbContext)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return Unauthorized();
+
+            var guidUserId = Guid.Parse(userId);
+
+            // Get today's start and end in UTC
+            var today = DateTime.UtcNow.Date;
+            var tomorrow = today.AddDays(1);
+
+            // Count meetings organized by the user today
+            var dailyMeetingCount = await dbContext.Meetings
+                .Where(m => m.UserId == guidUserId
+                            && m.StartTime >= today
+                            && m.StartTime < tomorrow)
+                .CountAsync();
+
+            return Ok(new { Count = dailyMeetingCount });
+        }
+
 
     }
 }
