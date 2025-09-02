@@ -26,12 +26,12 @@ namespace SmartMeetingRoomAPI.Controllers
             IUserRepository userRepository,
             IMapper mapper,
             UserManager<ApplicationUser> userManager,
-            AppDbContext dbContext) 
+            AppDbContext dbContext)
         {
             _userRepository = userRepository;
             _mapper = mapper;
             _userManager = userManager;
-            _dbContext = dbContext; 
+            _dbContext = dbContext;
         }
 
 
@@ -164,6 +164,42 @@ namespace SmartMeetingRoomAPI.Controllers
 
             return Ok(pendingInvites);
         }
+        [HttpGet("me/meetings/all")]
+        [Authorize]
+        public async Task<IActionResult> GetAllMeetings([FromServices] AppDbContext dbContext)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return Unauthorized();
+
+            var guidUserId = Guid.Parse(userId);
+
+            // Get organized meetings
+            var organizedMeetings = await dbContext.Meetings
+                .Where(m => m.UserId == guidUserId)
+                .Select(m => new { Meeting = m, Type = "Organized" })
+                .ToListAsync();
+
+            // Get accepted invited meetings
+            var invitedMeetings = await dbContext.Invitees
+                .Where(inv => inv.UserId == guidUserId
+                             && inv.Status == "Answered"
+                             && inv.Attendance == "Accepted"
+                             && inv.Meeting.UserId != guidUserId) // Exclude meetings already included in organized
+                .Select(inv => new { Meeting = inv.Meeting, Type = "Invited" })
+                .ToListAsync();
+
+            // Combine and sort by start time (most recent first)
+            var allMeetings = organizedMeetings.Concat(invitedMeetings)
+                .OrderByDescending(x => x.Meeting.StartTime)
+                .Select(x => new
+                {
+                    Meeting = _mapper.Map<AllMeetingsDto>(x.Meeting),
+                    Type = x.Type
+                })
+                .ToList();
+
+            return Ok(allMeetings);
+        }
         [HttpGet("me/invites/accepted")]
         [Authorize]
         public async Task<IActionResult> GetAcceptedInvites([FromServices] AppDbContext dbContext, int page = 1, int pageSize = 3)
@@ -187,6 +223,47 @@ namespace SmartMeetingRoomAPI.Controllers
 
             return Ok(acceptedInvites);
         }
+
+            [HttpGet("me/meetings/previous/all")]
+            [Authorize]
+            public async Task<IActionResult> GetAllPreviousMeetings([FromServices] AppDbContext dbContext,int page=1,int pageSize =3)
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (userId == null) return Unauthorized();
+
+                var guidUserId = Guid.Parse(userId);
+
+                // Get organized meetings
+                var organizedMeetings = await dbContext.Meetings
+                    .Where(m => m.UserId == guidUserId && m.EndTime < DateTime.UtcNow)
+                    .Select(m => new { Meeting = m, Type = "Organized" })
+                    .ToListAsync();
+
+                // Get accepted invited meetings
+                var invitedMeetings = await dbContext.Invitees
+                    .Where(inv => inv.UserId == guidUserId
+                                 && inv.Status == "Answered"
+                                 && inv.Attendance == "Accepted"
+                                 && inv.Meeting.EndTime < DateTime.UtcNow
+                                 && inv.Meeting.UserId != guidUserId) // Exclude meetings already included in organized
+                    .Select(inv => new { Meeting = inv.Meeting, Type = "Invited" })
+                    .ToListAsync();
+
+                // Combine and sort by start time (most recent first)
+                var allPreviousMeetings = organizedMeetings.Concat(invitedMeetings)
+                    .OrderByDescending(x => x.Meeting.StartTime)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(x => new
+                    {
+                        Meeting = _mapper.Map<AllMeetingsDto>(x.Meeting),
+                        Type = x.Type
+                    })
+                    .ToList();
+
+                return Ok(allPreviousMeetings);
+            }
+
         [HttpGet("me/meetings/dailycount")]
         [Authorize]
         public async Task<IActionResult> GetDailyMeetingCount([FromServices] AppDbContext dbContext)
