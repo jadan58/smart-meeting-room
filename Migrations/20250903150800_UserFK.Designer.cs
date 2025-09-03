@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SmartMeetingRoomAPI.Data;
 
@@ -11,9 +12,11 @@ using SmartMeetingRoomAPI.Data;
 namespace SmartMeetingRoomAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250903150800_UserFK")]
+    partial class UserFK
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -199,7 +202,7 @@ namespace SmartMeetingRoomAPI.Migrations
 
                     b.HasIndex("MeetingId");
 
-                    b.ToTable("ActionItems", (string)null);
+                    b.ToTable("ActionItems");
                 });
 
             modelBuilder.Entity("SmartMeetingRoomAPI.Models.ApplicationUser", b =>
@@ -316,7 +319,7 @@ namespace SmartMeetingRoomAPI.Migrations
 
                     b.HasIndex("UploadedByUserId");
 
-                    b.ToTable("Attachments", (string)null);
+                    b.ToTable("Attachments");
                 });
 
             modelBuilder.Entity("SmartMeetingRoomAPI.Models.Feature", b =>
@@ -332,7 +335,7 @@ namespace SmartMeetingRoomAPI.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Features", (string)null);
+                    b.ToTable("Features");
                 });
 
             modelBuilder.Entity("SmartMeetingRoomAPI.Models.Invitee", b =>
@@ -365,7 +368,7 @@ namespace SmartMeetingRoomAPI.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Invitees", (string)null);
+                    b.ToTable("Invitees");
                 });
 
             modelBuilder.Entity("SmartMeetingRoomAPI.Models.Meeting", b =>
@@ -430,7 +433,7 @@ namespace SmartMeetingRoomAPI.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Meetings", (string)null);
+                    b.ToTable("Meetings");
                 });
 
             modelBuilder.Entity("SmartMeetingRoomAPI.Models.Note", b =>
@@ -458,7 +461,7 @@ namespace SmartMeetingRoomAPI.Migrations
 
                     b.HasIndex("MeetingId");
 
-                    b.ToTable("Notes", (string)null);
+                    b.ToTable("Notes");
                 });
 
             modelBuilder.Entity("SmartMeetingRoomAPI.Models.Notification", b =>
@@ -489,7 +492,7 @@ namespace SmartMeetingRoomAPI.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("SmartMeetingRoomAPI.Models.RecurringBooking", b =>
@@ -519,7 +522,7 @@ namespace SmartMeetingRoomAPI.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RecurringBookings", (string)null);
+                    b.ToTable("RecurringBookings");
                 });
 
             modelBuilder.Entity("SmartMeetingRoomAPI.Models.Room", b =>
@@ -547,7 +550,7 @@ namespace SmartMeetingRoomAPI.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Rooms", (string)null);
+                    b.ToTable("Rooms");
                 });
 
             modelBuilder.Entity("SmartMeetingRoomAPI.Models.RoomFeature", b =>
@@ -568,7 +571,7 @@ namespace SmartMeetingRoomAPI.Migrations
 
                     b.HasIndex("RoomId");
 
-                    b.ToTable("RoomFeatures", (string)null);
+                    b.ToTable("RoomFeatures");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -633,7 +636,7 @@ namespace SmartMeetingRoomAPI.Migrations
                     b.HasOne("SmartMeetingRoomAPI.Models.Meeting", "Meeting")
                         .WithMany("ActionItems")
                         .HasForeignKey("MeetingId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("AssignedToUser");
@@ -696,7 +699,7 @@ namespace SmartMeetingRoomAPI.Migrations
                     b.HasOne("SmartMeetingRoomAPI.Models.Room", "Room")
                         .WithMany("Meetings")
                         .HasForeignKey("RoomId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("SmartMeetingRoomAPI.Models.ApplicationUser", "User")
@@ -724,7 +727,7 @@ namespace SmartMeetingRoomAPI.Migrations
                     b.HasOne("SmartMeetingRoomAPI.Models.Meeting", "Meeting")
                         .WithMany("Notes")
                         .HasForeignKey("MeetingId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("CreatedByUser");

@@ -54,7 +54,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var meeting = await _meetingRepository.GetByIdAsync(id);
             if (meeting == null) return NotFound();
             if (!IsCreatorOrInvitee(meeting, userId))
-                return Forbid("Only meeting creator or invitees can view meeting.");
+                return StatusCode(403, "Access denied"); 
             return Ok(_mapper.Map<MeetingResponseDto>(meeting));
         }
 
@@ -158,7 +158,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var existing = await _meetingRepository.GetByIdAsync(id);
             if (existing == null) return NotFound();
             if (!IsCreator(existing, userId))
-                return Forbid("Only meeting creator can update the meeting.");
+                return StatusCode(403, "Access denied"); 
 
             var updatedModel = _mapper.Map<Meeting>(dto);
             if (await IsRoomBookedAsync(updatedModel.RoomId, id, updatedModel.StartTime, updatedModel.EndTime))
@@ -176,7 +176,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var meeting = await _meetingRepository.GetByIdAsync(id);
             if (meeting == null) return NotFound();
             if (!IsCreator(meeting, userId))
-                return Forbid("Only meeting creator can delete the meeting.");
+                return StatusCode(403, "Access denied"); 
 
             var deleted = await _meetingRepository.DeleteAsync(id);
             return Ok(_mapper.Map<MeetingResponseDto>(deleted));
@@ -190,7 +190,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var meeting = await EnsureMeetingAsync(meetingId);
             if (meeting == null) return NotFound();
             if (!IsCreatorOrInvitee(meeting, userId))
-                return Forbid("Only meeting creator or invitees can add notes.");
+                return StatusCode(403, "Access denied"); 
 
             var note = _mapper.Map<Note>(dto);
             note.Id = Guid.NewGuid();
@@ -209,7 +209,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var note = meeting.Notes.FirstOrDefault(n => n.Id == noteId);
             if (note == null) return NotFound();
             if (!IsCreator(meeting, userId) && !IsNoteOwner(note, userId))
-                return Forbid("Only meeting creator or note owner can update this note.");
+                return StatusCode(403, "Access denied"); 
 
             var updatedNote = _mapper.Map<Note>(dto);
             var updated = await _meetingRepository.UpdateNoteAsync(meetingId, noteId, updatedNote);
@@ -226,7 +226,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var note = meeting.Notes.FirstOrDefault(n => n.Id == noteId);
             if (note == null) return NotFound();
             if (!IsCreator(meeting, userId) && !IsNoteOwner(note, userId))
-                return Forbid("Only meeting creator or note owner can delete this note.");
+                return StatusCode(403, "Access denied"); 
 
             var deleted = await _meetingRepository.DeleteNoteAsync(meetingId, noteId);
             return Ok(_mapper.Map<NoteDto>(deleted));
@@ -240,9 +240,9 @@ namespace SmartMeetingRoomAPI.Controllers
             var meeting = await EnsureMeetingAsync(meetingId);
             if (meeting == null) return NotFound();
             if (!IsCreator(meeting, userId))
-                return Forbid("Only meeting creator can add action items.");
+                return StatusCode(403, "Access denied"); 
             if (!IsCreatorOrInvitee(meeting, dto.AssignedToUserId))
-                return Forbid("Action items can only be assigned to invitees");
+                return StatusCode(403, "Access denied"); 
             var item = _mapper.Map<ActionItem>(dto);
             item.Id = Guid.NewGuid();
             var added = await _meetingRepository.AddActionItemAsync(meetingId, item);
@@ -259,7 +259,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var item = meeting.ActionItems.FirstOrDefault(ai => ai.Id == itemId);
             if (item == null) return NotFound();
             if (userId != item.AssignedToUserId)
-                return Forbid("Only the user that this task is assigned to can toggle its status.");
+                return StatusCode(403, "Access denied"); 
             item.Status = item.Status == "Pending" ? "Submitted" : "Pending";
             var updated = await _meetingRepository.UpdateActionItemAsync(meetingId, itemId, item);
             return Ok(_mapper.Map<ActionItemDto>(updated));
@@ -276,7 +276,7 @@ namespace SmartMeetingRoomAPI.Controllers
             if (item.Status != "Submitted")
                 return BadRequest("Only submitted tasks can be judged.");
             if (!IsCreator(meeting, userId))
-                return Forbid("Only the creator of this task can toggle its judgment.");
+                return StatusCode(403, "Access denied"); 
             item.Judgment ="Accepted";
             var updated = await _meetingRepository.UpdateActionItemAsync(meetingId, itemId, item);
             return Ok(_mapper.Map<ActionItemDto>(updated));
@@ -293,7 +293,7 @@ namespace SmartMeetingRoomAPI.Controllers
             if (item.Status != "Submitted")
                 return BadRequest("Only submitted tasks can be judged.");
             if (!IsCreator(meeting, userId))
-                return Forbid("Only the creator of this task can toggle its judgment.");
+                return StatusCode(403, "Access denied"); 
             item.Judgment= "Rejected";
             var updated = await _meetingRepository.UpdateActionItemAsync(meetingId, itemId, item);
             return Ok(_mapper.Map<ActionItemDto>(updated));
@@ -306,7 +306,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var meeting = await EnsureMeetingAsync(meetingId);
             if (meeting == null) return NotFound();
             if (!IsCreator(meeting, userId))
-                return Forbid("Only meeting creator can delete action items.");
+                return StatusCode(403, "Access denied"); 
 
             var deleted = await _meetingRepository.DeleteActionItemAsync(meetingId, itemId);
             return Ok(_mapper.Map<ActionItemDto>(deleted));
@@ -319,8 +319,8 @@ namespace SmartMeetingRoomAPI.Controllers
             var userId = GetUserId();
             var meeting = await EnsureMeetingAsync(meetingId);
             if (meeting == null) return NotFound();
-            if (!IsCreator(meeting, userId)) return Forbid("Only meeting creator can add invitees.");
-            if (IsRoomFull(meeting.Room, meeting)) return Forbid("Room is full, cannot add more invitees.");
+            if (!IsCreator(meeting, userId)) return StatusCode(403, "Access denied"); 
+            if (IsRoomFull(meeting.Room, meeting)) return BadRequest("Room is full, cannot add more invitees.");
             var duplicate = meeting.Invitees.Any(i => i.UserId == dto.UserId);
             if (duplicate) return BadRequest("User is already invited.");
             var invitee = _mapper.Map<Invitee>(dto);    
@@ -338,7 +338,7 @@ namespace SmartMeetingRoomAPI.Controllers
             if(invite == null)
                 return NotFound("Invite not found.");
             var meeting = await EnsureMeetingAsync(invite.MeetingId);
-            if (!IsCreator(meeting, userId)) return Forbid("Only meeting creator can delete invitees.");
+            if (!IsCreator(meeting, userId)) return StatusCode(403, "Access denied"); 
             var deleted = await _meetingRepository.DeleteInviteeAsync(inviteId);
             return Ok(_mapper.Map<InviteeDto>(deleted));
         }
@@ -360,7 +360,7 @@ namespace SmartMeetingRoomAPI.Controllers
             logger.LogError(room.Capacity + " " + meeting.Invitees.Count());
             return room == null || meeting.Invitees.Count() >= room.Capacity;
         }
-        private async Task<bool> IsRoomBookedAsync(Guid roomId, Guid meetingId, DateTime startTime, DateTime endTime)
+        private async Task<bool> IsRoomBookedAsync(Guid? roomId, Guid meetingId, DateTime startTime, DateTime endTime)
         {
             var meetings = await _meetingRepository.GetAllAsync();
             return meetings.Any(m => m.RoomId == roomId && m.StartTime < endTime && m.EndTime > startTime && m.Status != "Cancelled" && m.Id != meetingId);
@@ -410,7 +410,7 @@ namespace SmartMeetingRoomAPI.Controllers
                 return NotFound("Invite not found.");
           
             if (userId != invite.UserId)
-                return Forbid("You can only accept your own invite.");
+                return StatusCode(403, "Access denied"); 
 
             var meeting = await EnsureMeetingAsync(meetingId);
             if (meeting == null) return NotFound();
@@ -430,7 +430,7 @@ namespace SmartMeetingRoomAPI.Controllers
             if(invite == null)
                 return NotFound("Invite not found.");
             if (userId != invite.UserId)
-                return Forbid("You can only decline your own invite.");
+                return StatusCode(403, "Access denied"); 
             var meeting = await EnsureMeetingAsync(meetingId);
             if (meeting == null) return NotFound();
             invite.Status = "Answered";
@@ -452,7 +452,7 @@ namespace SmartMeetingRoomAPI.Controllers
                 return BadRequest("No files uploaded.");
 
             if (!IsCreator(item.Meeting,GetUserId()))
-                return Forbid("Only the creator of this action item can upload assignment attachments.");
+                return StatusCode(403, "Access denied"); 
             if(files.Count > 5)
                 return BadRequest("You can upload a maximum of 5 files.");
             if(files.Any(f => f.Length > 5 * 1024 * 1024))
@@ -501,7 +501,7 @@ namespace SmartMeetingRoomAPI.Controllers
                 return NotFound("Action item not found.");
 
             if(item.AssignedToUserId != GetUserId())
-                return Forbid("Only the user assigned to this action item can upload submission attachments.");
+                return StatusCode(403, "Access denied"); 
 
             if (files == null || !files.Any())
                 return BadRequest("No files uploaded.");
@@ -549,7 +549,7 @@ namespace SmartMeetingRoomAPI.Controllers
                 return NotFound("Meeting not found.");
 
             if (meeting.UserId != GetUserId())
-                return Forbid("Only the organizor of this meeting can upload attachments.");
+                return StatusCode(403, "Access denied"); 
 
             if (files == null || !files.Any())
                 return BadRequest("No files uploaded.");

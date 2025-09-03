@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SmartMeetingRoomAPI.Models;
 using System;
-using System.Reflection.Emit;
 
 namespace SmartMeetingRoomAPI.Data
 {
@@ -26,14 +25,27 @@ namespace SmartMeetingRoomAPI.Data
         {
             base.OnModelCreating(builder);
 
+            // ------------------------------
+            // Meeting → User (Organizer)
+            // ------------------------------
+            builder.Entity<Meeting>()
+                .HasOne(m => m.User)
+                .WithMany(u => u.OrganizedMeetings)
+                .HasForeignKey(m => m.UserId)
+                .OnDelete(DeleteBehavior.Cascade); // prevent multiple cascade paths
+
+            // ------------------------------
             // Meeting → Room
+            // ------------------------------
             builder.Entity<Meeting>()
                 .HasOne(m => m.Room)
                 .WithMany(r => r.Meetings)
                 .HasForeignKey(m => m.RoomId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull);
 
-            // Many-to-many: RoomFeature → Room & Feature
+            // ------------------------------
+            // RoomFeature → Room & Feature (Many-to-many)
+            // ------------------------------
             builder.Entity<RoomFeature>()
                 .HasOne(rf => rf.Room)
                 .WithMany(r => r.RoomFeatures)
@@ -46,40 +58,41 @@ namespace SmartMeetingRoomAPI.Data
                 .HasForeignKey(rf => rf.FeatureId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Meeting → Invitees (Cascade: delete invitees when meeting is deleted)
+            // ------------------------------
+            // Invitee → Meeting
+            // ------------------------------
             builder.Entity<Invitee>()
                 .HasOne(i => i.Meeting)
                 .WithMany(m => m.Invitees)
                 .HasForeignKey(i => i.MeetingId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // ------------------------------
             // ActionItem → Meeting
+            // ------------------------------
             builder.Entity<ActionItem>()
                 .HasOne(ai => ai.Meeting)
                 .WithMany(m => m.ActionItems)
                 .HasForeignKey(ai => ai.MeetingId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
+            // ------------------------------
             // Note → Meeting
+            // ------------------------------
             builder.Entity<Note>()
                 .HasOne(n => n.Meeting)
                 .WithMany(m => m.Notes)
                 .HasForeignKey(n => n.MeetingId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // ApplicationUser → Organized Meetings (Restrict to avoid multiple cascade paths)
-            builder.Entity<Meeting>()
-                .HasOne(m => m.User)
-                .WithMany(u => u.OrganizedMeetings)
-                .HasForeignKey(m => m.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            // ApplicationUser → InvitedMeetings (Cascade: deleting user removes their invitations only)
+            // ------------------------------
+            // Invitee → User (Invited user)
+            // ------------------------------
             builder.Entity<Invitee>()
                 .HasOne(i => i.User)
-                .WithMany()
+                .WithMany() // no collection needed on ApplicationUser
                 .HasForeignKey(i => i.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }
-    }
+}

@@ -11,12 +11,11 @@ namespace SmartMeetingRoomAPI.Models
         public Guid Id { get; set; }
 
         [Required]
-        public Guid RoomId { get; set; }
-        public Room Room { get; set; }
+        public Guid? RoomId { get; set; }
+        public Room? Room { get; set; }
 
-        [Required]
-        public Guid UserId { get; set; } // Organizer
-        public ApplicationUser User { get; set; }
+        public Guid? UserId { get; set; } // Organizer
+        public ApplicationUser? User { get; set; }
 
         public Guid? RecurringBookingId { get; set; }
         public RecurringBooking RecurringBooking { get; set; }

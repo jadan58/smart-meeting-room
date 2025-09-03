@@ -24,7 +24,7 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpPost("register")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles ="Admin")]
         public async Task<IActionResult> Register(RegisterRequestDto dto)
         {
             var userExists = await _userManager.FindByEmailAsync(dto.Email);
@@ -32,9 +32,9 @@ namespace SmartMeetingRoomAPI.Controllers
                 return BadRequest("User already exists");
 
             // Validate role
-            var validRoles = new[] { "Employee", "Guest" };
+            var validRoles = new[] {"Admin", "Employee", "Guest" };
             if (string.IsNullOrWhiteSpace(dto.Role) || !validRoles.Contains(dto.Role))
-                return BadRequest("Invalid role. Valid roles are: Employee, Guest.");
+                return BadRequest("Invalid role. Valid roles are: Admin, Employee, Guest.");
 
             var user = new ApplicationUser
             {
