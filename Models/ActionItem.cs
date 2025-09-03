@@ -25,7 +25,7 @@ namespace SmartMeetingRoomAPI.Models
         [MaxLength(20)]
         public string Status { get; set; } = "Pending";
         [MaxLength(20)]
-        public string Judgment { get; set; } = "Rejected";
+        public string Judgment { get; set; } = "Unjudged";
 
         [MaxLength(20)]
         public string Type { get; set; } // Decision, Task, Issue

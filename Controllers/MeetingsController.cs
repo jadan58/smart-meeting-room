@@ -264,9 +264,9 @@ namespace SmartMeetingRoomAPI.Controllers
             var updated = await _meetingRepository.UpdateActionItemAsync(meetingId, itemId, item);
             return Ok(_mapper.Map<ActionItemDto>(updated));
         }
-        [HttpPut("{meetingId}/action-items/{itemId}/toggle-judgment")]
+        [HttpPut("{meetingId}/action-items/{itemId}/accept")]
         [Authorize]
-        public async Task<ActionResult<ActionItemDto>> ToggleJudgment(Guid meetingId, Guid itemId)
+        public async Task<ActionResult<ActionItemDto>> Accept(Guid meetingId, Guid itemId)
         {
             var userId = GetUserId();
             var meeting = await EnsureMeetingAsync(meetingId);
@@ -277,7 +277,24 @@ namespace SmartMeetingRoomAPI.Controllers
                 return BadRequest("Only submitted tasks can be judged.");
             if (!IsCreator(meeting, userId))
                 return Forbid("Only the creator of this task can toggle its judgment.");
-            item.Judgment = item.Judgment == "Rejected" ? "Accepted" : "Rejected";
+            item.Judgment ="Accepted";
+            var updated = await _meetingRepository.UpdateActionItemAsync(meetingId, itemId, item);
+            return Ok(_mapper.Map<ActionItemDto>(updated));
+        }
+        [HttpPut("{meetingId}/action-items/{itemId}/reject")]
+        [Authorize]
+        public async Task<ActionResult<ActionItemDto>> Reject(Guid meetingId, Guid itemId)
+        {
+            var userId = GetUserId();
+            var meeting = await EnsureMeetingAsync(meetingId);
+            if (meeting == null) return NotFound();
+            var item = meeting.ActionItems.FirstOrDefault(ai => ai.Id == itemId);
+            if (item == null) return NotFound();
+            if (item.Status != "Submitted")
+                return BadRequest("Only submitted tasks can be judged.");
+            if (!IsCreator(meeting, userId))
+                return Forbid("Only the creator of this task can toggle its judgment.");
+            item.Judgment= "Rejected";
             var updated = await _meetingRepository.UpdateActionItemAsync(meetingId, itemId, item);
             return Ok(_mapper.Map<ActionItemDto>(updated));
         }
