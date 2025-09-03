@@ -9,5 +9,6 @@ namespace SmartMeetingRoomAPI.Repositories
         Task<IEnumerable<ApplicationUser>> GetAllAsync();
         Task<ApplicationUser?> GetByIdAsync(Guid id);
         Task<ApplicationUser?> GetByEmailAsync(string email);
+        Task<ApplicationUser?> UpdateImageAsync(Guid id, string imageUrl);
     }
 }

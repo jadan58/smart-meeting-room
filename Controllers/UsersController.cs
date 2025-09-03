@@ -80,7 +80,7 @@ namespace SmartMeetingRoomAPI.Controllers
             // Sort by start time
             dto.OrganizedMeetings = dto.OrganizedMeetings
                 .OrderBy(m => m.StartTime) // assuming StartTime is DateTime
-                .Where(m => m.StartTime > DateTime.UtcNow)
+                .Where(m => m.EndTime > DateTime.UtcNow)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
@@ -151,7 +151,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var guidUserId = Guid.Parse(userId);
 
             var pendingInvites = await dbContext.Invitees
-                .Where(inv => inv.UserId == guidUserId && inv.Status == "Pending" && inv.Meeting.StartTime > DateTime.UtcNow)
+                .Where(inv => inv.UserId == guidUserId && inv.Status == "Pending" && inv.Meeting.EndTime > DateTime.UtcNow)
                 .OrderBy(inv => inv.Meeting.StartTime)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -176,7 +176,7 @@ namespace SmartMeetingRoomAPI.Controllers
             // Get organized meetings
             var organizedMeetings = await dbContext.Meetings
                 .Where(m => m.UserId == guidUserId)
-                .Select(m => new { Meeting = m, Type = "Organized" })
+                .Select(m => new { Meeting = m, Type = "organized" })
                 .ToListAsync();
 
             // Get accepted invited meetings
@@ -185,7 +185,7 @@ namespace SmartMeetingRoomAPI.Controllers
                              && inv.Status == "Answered"
                              && inv.Attendance == "Accepted"
                              && inv.Meeting.UserId != guidUserId) // Exclude meetings already included in organized
-                .Select(inv => new { Meeting = inv.Meeting, Type = "Invited" })
+                .Select(inv => new { Meeting = inv.Meeting, Type = "invited" })
                 .ToListAsync();
 
             // Combine and sort by start time (most recent first)
@@ -210,7 +210,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var guidUserId = Guid.Parse(userId);
 
             var acceptedInvites = await dbContext.Invitees
-                .Where(inv => inv.UserId == guidUserId && inv.Status == "Answered" && inv.Attendance == "Accepted" && inv.Meeting.StartTime > DateTime.UtcNow)
+                .Where(inv => inv.UserId == guidUserId && inv.Status == "Answered" && inv.Attendance == "Accepted" && inv.Meeting.EndTime > DateTime.UtcNow)
                 .OrderBy(inv => inv.Meeting.StartTime)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -321,6 +321,47 @@ namespace SmartMeetingRoomAPI.Controllers
 
             return Ok(meetingCounts);
         }
+        [HttpPost("me/upload-profile")]
+        [Authorize]
+        public async Task<IActionResult> UploadRoomImage(IFormFile file, [FromServices] IWebHostEnvironment env)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var user = await _userRepository.GetByIdAsync(Guid.Parse(userId));
+            if (user == null)
+                return NotFound("User not found.");
 
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded.");
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+                return BadRequest("Invalid file type. Allowed: .jpg, .jpeg, .png");
+
+            var uploadsFolder = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "users");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var fileName = $"{Guid.NewGuid()}{extension}";
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            // Delete old image if exists
+            if (!string.IsNullOrEmpty(user.ProfilePictureUrl))
+            {
+                var oldImagePath = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), user.ProfilePictureUrl.TrimStart('/'));
+                if (System.IO.File.Exists(oldImagePath))
+                    System.IO.File.Delete(oldImagePath);
+            }
+
+            var relativePath = $"/uploads/users/{fileName}";
+            await _userRepository.UpdateImageAsync(Guid.Parse(userId), relativePath);
+
+            return Ok(new { userId, ImageUrl = relativePath });
+        }
     }
 }

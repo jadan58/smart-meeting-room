@@ -35,5 +35,16 @@ namespace SmartMeetingRoomAPI.Repositories
         {
             return await dbContext.Users.FirstOrDefaultAsync(u => u.Email == email);
         }
+        public async Task<ApplicationUser?> UpdateImageAsync(Guid id, string imageUrl)
+        {
+            var existingUser = await dbContext.Users.FindAsync(id);
+            if (existingUser == null)
+                return null;
+
+            existingUser.ProfilePictureUrl= imageUrl;
+            await dbContext.SaveChangesAsync();
+            return existingUser;
+        }
+
     }
 }

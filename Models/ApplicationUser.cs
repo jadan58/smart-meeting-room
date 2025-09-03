@@ -13,7 +13,7 @@ namespace SmartMeetingRoomAPI.Models
         public string LastName { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
+        public string? ProfilePictureUrl { get; set; }
         public int TotalMeetingTime { get; set; } = 0;
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 

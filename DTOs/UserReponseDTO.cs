@@ -12,7 +12,7 @@ namespace SmartMeetingRoomAPI.DTOs
 
         public string LastName { get; set; }
         public string Email { get; set; }
-
+        public string? ProfilePictureUrl { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public List<string> Roles { get; set; } 
