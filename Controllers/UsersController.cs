@@ -363,5 +363,25 @@ namespace SmartMeetingRoomAPI.Controllers
 
             return Ok(new { userId, ImageUrl = relativePath });
         }
+        [HttpDelete("me/delete-profile")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteRoomImage([FromServices] IWebHostEnvironment env)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var user = await _userRepository.GetByIdAsync(Guid.Parse(userId));
+            if (user == null)
+                return NotFound("Room not found.");
+
+            if (string.IsNullOrEmpty(user.ProfilePictureUrl))
+                return BadRequest("This user has no image to delete.");
+            
+            var imagePath = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), user.ProfilePictureUrl.TrimStart('/'));
+            if (System.IO.File.Exists(imagePath))
+                System.IO.File.Delete(imagePath);
+
+            await _userRepository.UpdateImageAsync(Guid.Parse(userId), null);
+
+            return NoContent();
+        }
     }
 }
