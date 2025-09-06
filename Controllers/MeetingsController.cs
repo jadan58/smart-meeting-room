@@ -351,24 +351,7 @@ namespace SmartMeetingRoomAPI.Controllers
             return Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
         }
 
-        private bool IsCreator(Meeting meeting, Guid userId) => meeting.UserId == userId;
-        private bool IsCreatorOrInvitee(Meeting meeting, Guid userId) => IsCreator(meeting, userId) || meeting.Invitees.Any(i => i.UserId == userId && i.Attendance == "Accepted");
-        private bool IsNoteOwner(Note note, Guid userId) => note.CreatedByUserId == userId;
-        private bool IsAttachmentUploader(Attachment attachment, Guid userId) => attachment.UploadedByUserId == userId;
-        private bool IsRoomFull(Room room, Meeting meeting)
-        {
-            logger.LogError(room.Capacity + " " + meeting.Invitees.Count());
-            return room == null || meeting.Invitees.Count() >= room.Capacity;
-        }
-        private async Task<bool> IsRoomBookedAsync(Guid? roomId, Guid meetingId, DateTime startTime, DateTime endTime)
-        {
-            var meetings = await _meetingRepository.GetAllAsync();
-            return meetings.Any(m => m.RoomId == roomId && m.StartTime < endTime && m.EndTime > startTime && m.Status != "Cancelled" && m.Id != meetingId);
-        }
-        private async Task<Meeting> EnsureMeetingAsync(Guid meetingId)
-        {
-            return await _meetingRepository.GetByIdAsync(meetingId);
-        }
+        
 
         [HttpGet("count")]
         public async Task<ActionResult<int>> GetMeetingsCount()
@@ -444,49 +427,47 @@ namespace SmartMeetingRoomAPI.Controllers
         public async Task<IActionResult> UploadAssignmentAttachments(Guid itemId, List<IFormFile> files)
         {
             var item = await dbContext.ActionItems
-                .Include(ai => ai.Meeting) // Load related Meeting
-                .FirstOrDefaultAsync(ai => ai.Id == itemId );
+                .Include(ai => ai.Meeting)
+                .FirstOrDefaultAsync(ai => ai.Id == itemId);
             if (item == null)
                 return NotFound("Action item not found.");
+            if (!IsCreator(item.Meeting, GetUserId()))
+                return StatusCode(403, "Access denied");
             if (files == null || !files.Any())
                 return BadRequest("No files uploaded.");
-
-            if (!IsCreator(item.Meeting,GetUserId()))
-                return StatusCode(403, "Access denied"); 
-            if(files.Count > 5)
+            if (files.Count > 5)
                 return BadRequest("You can upload a maximum of 5 files.");
-            if(files.Any(f => f.Length > 5 * 1024 * 1024))
+            if (files.Any(f => f.Length > 5 * 1024 * 1024))
                 return BadRequest("Each file must be less than 5MB.");
-            if(files.Any(f => !new[] { ".jpg", ".jpeg", ".png", ".pdf", ".docx", ".xlsx", ".txt" }.Contains(Path.GetExtension(f.FileName).ToLower())))
+            if (files.Any(f => !new[] { ".jpg", ".jpeg", ".png", ".pdf", ".docx", ".xlsx", ".txt" }
+                .Contains(Path.GetExtension(f.FileName).ToLower())))
                 return BadRequest("Only .jpg, .jpeg, .png, .pdf, .docx, .xlsx, .txt files are allowed.");
 
-            // Ensure the uploads folder exists
-            var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
-                                             "uploads", "action-items", itemId.ToString(), "assignment");
+            // Private folder outside wwwroot
+            var uploadsFolder = Path.Combine(_env.ContentRootPath, "upload", "action-items", itemId.ToString(), "assignment");
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
 
-            var urls = new List<string>();
+            var filePaths = new List<string>();
             foreach (var file in files)
             {
                 var extension = Path.GetExtension(file.FileName);
                 var fileName = $"{Guid.NewGuid()}{extension}";
                 var filePath = Path.Combine(uploadsFolder, fileName);
 
-                // Save the file
                 using (var stream = new FileStream(filePath, FileMode.Create))
                     await file.CopyToAsync(stream);
 
-                // Build relative URL from wwwroot
-                var relativePath = Path.Combine("uploads", "action-items", itemId.ToString(), "assignment", fileName)
-                                        .Replace("\\", "/"); // Forward slashes for URL
-                urls.Add("/" + relativePath); // Ensure URL starts with '/'
+                // Relative path for secure GET endpoint
+                var relativePath = Path.Combine("action-items", itemId.ToString(), "assignment", fileName)
+                                        .Replace("\\", "/");
+                filePaths.Add(relativePath);
             }
 
-            // Save URLs in the database
-            await _meetingRepository.UpdateAssignmentAttachmentsAsync(itemId, urls);
+            // Save paths in DB (for reference)
+            await _meetingRepository.UpdateAssignmentAttachmentsAsync(itemId, filePaths);
 
-            return Ok(new { itemId, urls });
+            return Ok(new { itemId, filePaths }); // Frontend uses these to call secure GET
         }
 
 
@@ -495,49 +476,47 @@ namespace SmartMeetingRoomAPI.Controllers
         public async Task<IActionResult> UploadSubmissionAttachments(Guid itemId, List<IFormFile> files)
         {
             var item = await dbContext.ActionItems
-                .Include(ai => ai.Meeting) // Load related Meeting
+                .Include(ai => ai.Meeting)
                 .FirstOrDefaultAsync(ai => ai.Id == itemId);
             if (item == null)
                 return NotFound("Action item not found.");
-
-            if(item.AssignedToUserId != GetUserId())
-                return StatusCode(403, "Access denied"); 
-
+            if (item.AssignedToUserId != GetUserId())
+                return StatusCode(403, "Access denied");
             if (files == null || !files.Any())
                 return BadRequest("No files uploaded.");
-            if(files.Count > 5)
+            if (files.Count > 5)
                 return BadRequest("You can upload a maximum of 5 files.");
-            if(files.Any(f => f.Length > 5 * 1024 * 1024))
+            if (files.Any(f => f.Length > 5 * 1024 * 1024))
                 return BadRequest("Each file must be less than 5MB.");
-            if(files.Any(f => !new[] { ".jpg", ".jpeg", ".png", ".pdf", ".docx", ".xlsx", ".txt" }.Contains(Path.GetExtension(f.FileName).ToLower())))
+            if (files.Any(f => !new[] { ".jpg", ".jpeg", ".png", ".pdf", ".docx", ".xlsx", ".txt" }
+                .Contains(Path.GetExtension(f.FileName).ToLower())))
                 return BadRequest("Only .jpg, .jpeg, .png, .pdf, .docx, .xlsx, .txt files are allowed.");
-            // Ensure the uploads folder exists
-            var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
-                                             "uploads", "action-items", itemId.ToString(), "submission");
+
+            // Private folder outside wwwroot
+            var uploadsFolder = Path.Combine(_env.ContentRootPath, "upload", "action-items", itemId.ToString(), "submission");
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
 
-            var urls = new List<string>();
+            var filePaths = new List<string>();
             foreach (var file in files)
             {
                 var extension = Path.GetExtension(file.FileName);
                 var fileName = $"{Guid.NewGuid()}{extension}";
                 var filePath = Path.Combine(uploadsFolder, fileName);
 
-                // Save the file
                 using (var stream = new FileStream(filePath, FileMode.Create))
                     await file.CopyToAsync(stream);
 
-                // Build relative URL from wwwroot
-                var relativePath = Path.Combine("uploads", "action-items", itemId.ToString(), "submission", fileName)
-                                        .Replace("\\", "/"); // Forward slashes for URL
-                urls.Add("/" + relativePath); // Ensure URL starts with '/'
+                // Relative path for secure GET endpoint
+                var relativePath = Path.Combine("action-items", itemId.ToString(), "submission", fileName)
+                                        .Replace("\\", "/");
+                filePaths.Add(relativePath);
             }
 
-            // Save URLs in the database
-            await _meetingRepository.UpdateSubmissionAttachmentsAsync(itemId, urls);
+            // Save paths in DB
+            await _meetingRepository.UpdateSubmissionAttachmentsAsync(itemId, filePaths);
 
-            return Ok(new { itemId, urls });
+            return Ok(new { itemId, filePaths }); // Frontend uses these to call secure GET
         }
 
         [HttpPost("{meetingId}/attachments")]
@@ -549,7 +528,7 @@ namespace SmartMeetingRoomAPI.Controllers
                 return NotFound("Meeting not found.");
 
             if (meeting.UserId != GetUserId())
-                return StatusCode(403, "Access denied"); 
+                return StatusCode(403, "Access denied");
 
             if (files == null || !files.Any())
                 return BadRequest("No files uploaded.");
@@ -558,8 +537,9 @@ namespace SmartMeetingRoomAPI.Controllers
                 return BadRequest("You can upload a maximum of 5 files.");
 
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf", ".docx", ".xlsx", ".txt" };
-            var uploadsFolder = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "meetings");
 
+            // Save files outside wwwroot in a private "upload" folder
+            var uploadsFolder = Path.Combine(env.ContentRootPath, "upload", "meetings", meetingId.ToString());
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
 
@@ -585,7 +565,9 @@ namespace SmartMeetingRoomAPI.Controllers
                     await file.CopyToAsync(stream);
                 }
 
-                var relativePath = $"/uploads/meetings/{fileName}";
+                // Store relative path for your repository, e.g. "meetings/{meetingId}/{guid}.ext"
+                var relativePath = Path.Combine("meetings", meetingId.ToString(), fileName)
+                                          .Replace(Path.DirectorySeparatorChar, '/');
                 uploadedFiles.Add(relativePath);
             }
 
@@ -595,8 +577,26 @@ namespace SmartMeetingRoomAPI.Controllers
             return Ok(new
             {
                 MeetingId = updatedMeeting!.Id,
-                AttachmentUrls = updatedMeeting.AttachmentUrls
+                AttachmentUrls = updatedMeeting.AttachmentUrls // these will now point to your secure GET endpoint
             });
+        }
+        private bool IsCreator(Meeting meeting, Guid userId) => meeting.UserId == userId;
+        private bool IsCreatorOrInvitee(Meeting meeting, Guid userId) => IsCreator(meeting, userId) || meeting.Invitees.Any(i => i.UserId == userId && i.Attendance == "Accepted");
+        private bool IsNoteOwner(Note note, Guid userId) => note.CreatedByUserId == userId;
+        private bool IsAttachmentUploader(Attachment attachment, Guid userId) => attachment.UploadedByUserId == userId;
+        private bool IsRoomFull(Room room, Meeting meeting)
+        {
+            logger.LogError(room.Capacity + " " + meeting.Invitees.Count());
+            return room == null || meeting.Invitees.Count() >= room.Capacity;
+        }
+        private async Task<bool> IsRoomBookedAsync(Guid? roomId, Guid meetingId, DateTime startTime, DateTime endTime)
+        {
+            var meetings = await _meetingRepository.GetAllAsync();
+            return meetings.Any(m => m.RoomId == roomId && m.StartTime < endTime && m.EndTime > startTime && m.Status != "Cancelled" && m.Id != meetingId);
+        }
+        private async Task<Meeting> EnsureMeetingAsync(Guid meetingId)
+        {
+            return await _meetingRepository.GetByIdAsync(meetingId);
         }
 
 
