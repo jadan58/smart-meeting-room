@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -133,7 +134,8 @@ if (app.Environment.IsDevelopment())
 
 // -----------------------
 // Middleware
-// -----------------------
+// ----------------------
+app.UseMiddleware<SmartMeetingRoomAPI.Middlewares.ExceptionHandlerMiddleware>();
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");   // CORS BEFORE authentication
 app.UseAuthentication();

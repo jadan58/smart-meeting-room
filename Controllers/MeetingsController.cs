@@ -60,7 +60,7 @@ namespace SmartMeetingRoomAPI.Controllers
 
 
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = "Admin,Employee")]
         public async Task<ActionResult<MeetingResponseDto>> CreateMeeting(CreateMeetingRequestDto dto)
         {
             var userId = GetUserId();
@@ -188,6 +188,7 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = GetUserId();
             var meeting = await EnsureMeetingAsync(meetingId);
+            if (!meetingStarted(meeting)) return BadRequest("Meeting didn't start yet");
             if (meeting == null) return NotFound();
             if (!IsCreatorOrInvitee(meeting, userId))
                 return StatusCode(403, "Access denied"); 
@@ -205,6 +206,7 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = GetUserId();
             var meeting = await EnsureMeetingAsync(meetingId);
+            if (!meetingStarted(meeting)) return BadRequest("Meeting didn't start yet");
             if (meeting == null) return NotFound();
             var note = meeting.Notes.FirstOrDefault(n => n.Id == noteId);
             if (note == null) return NotFound();
@@ -222,6 +224,8 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = GetUserId();
             var meeting = await EnsureMeetingAsync(meetingId);
+            if (!meetingStarted(meeting)) return BadRequest("Meeting didn't start yet");
+
             if (meeting == null) return NotFound();
             var note = meeting.Notes.FirstOrDefault(n => n.Id == noteId);
             if (note == null) return NotFound();
@@ -238,6 +242,7 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = GetUserId();
             var meeting = await EnsureMeetingAsync(meetingId);
+            if (!meetingStarted(meeting)) return BadRequest("Meeting didn't start yet");
             if (meeting == null) return NotFound();
             if (!IsCreator(meeting, userId))
                 return StatusCode(403, "Access denied"); 
@@ -255,6 +260,7 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = GetUserId();
             var meeting = await EnsureMeetingAsync(meetingId);
+            if (!meetingStarted(meeting)) return BadRequest("Meeting didn't start yet");
             if (meeting == null) return NotFound();
             var item = meeting.ActionItems.FirstOrDefault(ai => ai.Id == itemId);
             if (item == null) return NotFound();
@@ -270,6 +276,7 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = GetUserId();
             var meeting = await EnsureMeetingAsync(meetingId);
+            if (!meetingStarted(meeting)) return BadRequest("Meeting didn't start yet");
             if (meeting == null) return NotFound();
             var item = meeting.ActionItems.FirstOrDefault(ai => ai.Id == itemId);
             if (item == null) return NotFound();
@@ -287,6 +294,7 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = GetUserId();
             var meeting = await EnsureMeetingAsync(meetingId);
+            if (!meetingStarted(meeting)) return BadRequest("Meeting didn't start yet");
             if (meeting == null) return NotFound();
             var item = meeting.ActionItems.FirstOrDefault(ai => ai.Id == itemId);
             if (item == null) return NotFound();
@@ -304,6 +312,7 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = GetUserId();
             var meeting = await EnsureMeetingAsync(meetingId);
+            if (!meetingStarted(meeting)) return BadRequest("Meeting didn't start yet");
             if (meeting == null) return NotFound();
             if (!IsCreator(meeting, userId))
                 return StatusCode(403, "Access denied"); 
@@ -335,23 +344,13 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = GetUserId();
             var invite = dbContext.Invitees.Find(inviteId);
-            if(invite == null)
+            if (invite == null)
                 return NotFound("Invite not found.");
             var meeting = await EnsureMeetingAsync(invite.MeetingId);
-            if (!IsCreator(meeting, userId)) return StatusCode(403, "Access denied"); 
+            if (!IsCreator(meeting, userId)) return StatusCode(403, "Access denied");
             var deleted = await _meetingRepository.DeleteInviteeAsync(inviteId);
             return Ok(_mapper.Map<InviteeDto>(deleted));
         }
-
-     
-
-        // PRIVATE HELPERS
-        private Guid GetUserId()
-        {
-            return Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-        }
-
-        
 
         [HttpGet("count")]
         public async Task<ActionResult<int>> GetMeetingsCount()
@@ -429,6 +428,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var item = await dbContext.ActionItems
                 .Include(ai => ai.Meeting)
                 .FirstOrDefaultAsync(ai => ai.Id == itemId);
+            if (!meetingStarted(item.Meeting)) return BadRequest("Meeting didn't start yet");
             if (item == null)
                 return NotFound("Action item not found.");
             if (!IsCreator(item.Meeting, GetUserId()))
@@ -478,6 +478,8 @@ namespace SmartMeetingRoomAPI.Controllers
             var item = await dbContext.ActionItems
                 .Include(ai => ai.Meeting)
                 .FirstOrDefaultAsync(ai => ai.Id == itemId);
+
+            if (!meetingStarted(item.Meeting)) return BadRequest("Meeting didn't start yet");
             if (item == null)
                 return NotFound("Action item not found.");
             if (item.AssignedToUserId != GetUserId())
@@ -580,6 +582,9 @@ namespace SmartMeetingRoomAPI.Controllers
                 AttachmentUrls = updatedMeeting.AttachmentUrls // these will now point to your secure GET endpoint
             });
         }
+        // PRIVATE HELPERS
+        private Guid GetUserId() { return Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)); } 
+        private bool meetingStarted(Meeting meeting)=>meeting.StartTime<=DateTime.Now;
         private bool IsCreator(Meeting meeting, Guid userId) => meeting.UserId == userId;
         private bool IsCreatorOrInvitee(Meeting meeting, Guid userId) => IsCreator(meeting, userId) || meeting.Invitees.Any(i => i.UserId == userId && i.Attendance == "Accepted");
         private bool IsNoteOwner(Note note, Guid userId) => note.CreatedByUserId == userId;
