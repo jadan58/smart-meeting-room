@@ -583,8 +583,8 @@ namespace SmartMeetingRoomAPI.Controllers
             });
         }
         // PRIVATE HELPERS
-        private Guid GetUserId() { return Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)); } 
-        private bool meetingStarted(Meeting meeting)=>meeting.StartTime<=DateTime.Now;
+        private Guid GetUserId() { return Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)); }
+        private bool meetingStarted(Meeting meeting) { return meeting.StartTime <= DateTime.UtcNow; }
         private bool IsCreator(Meeting meeting, Guid userId) => meeting.UserId == userId;
         private bool IsCreatorOrInvitee(Meeting meeting, Guid userId) => IsCreator(meeting, userId) || meeting.Invitees.Any(i => i.UserId == userId && i.Attendance == "Accepted");
         private bool IsNoteOwner(Note note, Guid userId) => note.CreatedByUserId == userId;
