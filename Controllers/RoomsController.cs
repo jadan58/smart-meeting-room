@@ -206,6 +206,19 @@ namespace SmartMeetingRoomAPI.Controllers
             return NoContent();
         }
 
+        [HttpGet("biggest-rooms")]
+
+        public async Task<ActionResult<IEnumerable<RoomResponseDto>>> GetBiggestRooms()
+        {
+            var rooms = await _roomRepository.GetAllAsync();
+            var recent = rooms
+                .OrderByDescending(r => r.Capacity)
+                .Take(3)
+                .ToList();
+            var result = _mapper.Map<IEnumerable<RoomResponseDto>>(recent);
+            return Ok(result);
+        }
+
         [HttpGet("count")]
         public async Task<ActionResult<int>> GetRoomsCount()
         {

@@ -382,6 +382,7 @@ namespace SmartMeetingRoomAPI.Controllers
             var result = _mapper.Map<IEnumerable<RoomResponseDto>>(topRooms);
             return Ok(result);
         }
+
         [HttpPut("{meetingId}/invitees/{inviteId}/accept")]
         [Authorize]
         public async Task<ActionResult<InviteeDto>> AcceptInvite(Guid meetingId, Guid inviteId)

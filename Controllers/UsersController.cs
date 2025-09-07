@@ -383,5 +383,16 @@ namespace SmartMeetingRoomAPI.Controllers
 
             return NoContent();
         }
+        [HttpGet]
+        [Route("top-organizers")]
+        public async Task<IActionResult> MostActiveOrganizers()
+        {
+            var users = await _userRepository.GetAllAsync();
+            var topUsers = users
+                .OrderByDescending(u => u.OrganizedMeetings.Count)
+                .Take(3)
+                .ToList();
+            return Ok(_mapper.Map<List<UserReponseDTO>>(topUsers));
+        }
     }
 }
