@@ -30,7 +30,6 @@ public class NotificationsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CreateNotification(CreateNotificationDto dto)
     {
         var notification = new Notification
