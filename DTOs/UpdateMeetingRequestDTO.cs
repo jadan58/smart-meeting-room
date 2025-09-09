@@ -9,6 +9,7 @@ namespace SmartMeetingRoomAPI.DTOs
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
         public string Status { get; set; }
+        public string? onlineLink { get; set; }
 
         public Guid RoomId { get; set; }
         public Guid UserId { get; set; }

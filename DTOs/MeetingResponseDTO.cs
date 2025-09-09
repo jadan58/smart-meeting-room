@@ -18,6 +18,7 @@ namespace SmartMeetingRoomAPI.DTOs
         public Guid UserId { get; set; }
         public Guid? RecurringBookingId { get; set; }
         public Guid? NextMeetingId { get; set; }
+        public string? onlineLink { get; set; }
 
         public List<NoteDto> Notes { get; set; }
         public List<ActionItemDto> ActionItems { get; set; }

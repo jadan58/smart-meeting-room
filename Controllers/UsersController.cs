@@ -36,7 +36,7 @@ namespace SmartMeetingRoomAPI.Controllers
 
 
         [HttpGet]
-        [Authorize]
+        [Authorize (Roles = "Admin")]
         public async Task<IActionResult> GetAllUsers()
         {
             var users = await _userRepository.GetAllAsync();

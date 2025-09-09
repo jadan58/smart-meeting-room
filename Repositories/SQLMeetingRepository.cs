@@ -61,6 +61,7 @@ namespace SmartMeetingRoomAPI.Repositories
             existing.StartTime = updatedMeeting.StartTime;
             existing.EndTime = updatedMeeting.EndTime;
             existing.Status = updatedMeeting.Status;
+            existing.onlineLink = updatedMeeting.onlineLink;
             existing.UpdatedAt = DateTime.UtcNow;
             existing.RoomId = updatedMeeting.RoomId;
             existing.UserId = updatedMeeting.UserId;

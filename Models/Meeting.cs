@@ -19,7 +19,7 @@ namespace SmartMeetingRoomAPI.Models
 
         public Guid? RecurringBookingId { get; set; }
         public RecurringBooking RecurringBooking { get; set; }
-
+        public string? onlineLink{ get; set; }
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
 

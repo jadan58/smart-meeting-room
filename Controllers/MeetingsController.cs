@@ -71,6 +71,9 @@ namespace SmartMeetingRoomAPI.Controllers
             if (meeting.StartTime >= meeting.EndTime)
                 return BadRequest("StartTime must be before EndTime.");
 
+            if (meeting.StartTime < DateTime.UtcNow)
+                return BadRequest("StartTime must be in the future.");
+
             if (await IsRoomBookedAsync(meeting.RoomId, meeting.Id, meeting.StartTime, meeting.EndTime))
                 return BadRequest("The room is already booked for the specified time.");
 
@@ -79,13 +82,16 @@ namespace SmartMeetingRoomAPI.Controllers
         }
 
         [HttpPost("recurring")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Employee")]
         public async Task<ActionResult<RecurringBookingResponseDto>> CreateRecurringMeeting(CreateRecurringMeetingRequestDTO dto)
         {
             var userId = GetUserId();
 
             if (dto.StartTime >= dto.EndTime)
                 return BadRequest("StartTime must be before EndTime.");
+
+            if (dto.StartTime < DateTime.UtcNow)
+                return BadRequest("StartTime must be in the future.");
 
             if (dto.RecurrenceEndDate < dto.StartTime)
                 return BadRequest("RecurrenceEndDate must be on or after StartTime.");
@@ -156,7 +162,11 @@ namespace SmartMeetingRoomAPI.Controllers
         {
             var userId = GetUserId();
             var existing = await _meetingRepository.GetByIdAsync(id);
+
             if (existing == null) return NotFound();
+
+            if (meetingStarted(existing)) return BadRequest("Cannot update meeting that has already started.");
+
             if (!IsCreator(existing, userId))
                 return StatusCode(403, "Access denied"); 
 
@@ -247,7 +257,7 @@ namespace SmartMeetingRoomAPI.Controllers
             if (!IsCreator(meeting, userId))
                 return StatusCode(403, "Access denied"); 
             if (!IsCreatorOrInvitee(meeting, dto.AssignedToUserId))
-                return StatusCode(403, "Access denied"); 
+                return StatusCode(403, "Assigned-To User is not an attendee"); 
             var item = _mapper.Map<ActionItem>(dto);
             item.Id = Guid.NewGuid();
             var added = await _meetingRepository.AddActionItemAsync(meetingId, item);
@@ -429,9 +439,10 @@ namespace SmartMeetingRoomAPI.Controllers
             var item = await dbContext.ActionItems
                 .Include(ai => ai.Meeting)
                 .FirstOrDefaultAsync(ai => ai.Id == itemId);
-            if (!meetingStarted(item.Meeting)) return BadRequest("Meeting didn't start yet");
             if (item == null)
                 return NotFound("Action item not found.");
+            if (!meetingStarted(item.Meeting)) 
+                return BadRequest("Meeting didn't start yet");
             if (!IsCreator(item.Meeting, GetUserId()))
                 return StatusCode(403, "Access denied");
             if (files == null || !files.Any())
